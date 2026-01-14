@@ -109,6 +109,95 @@ def compress_image_smart(image_file):
         print(f"Image compression error: {e}")
         return None
 
+# ---------------- GOOGLE DRIVE IMAGE UPLOAD ----------------
+def upload_to_drive(image_file, filename, folder_id=None):
+    """Upload image to Google Drive and return shareable link"""
+    try:
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaIoBaseUpload
+        
+        # Reset file pointer
+        image_file.seek(0)
+        
+        # Use same credentials as Google Sheets
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        
+        raw_creds = os.environ.get("GCP_SERVICE_ACCOUNT")
+        if not raw_creds:
+            return None
+        
+        creds_dict = json.loads(raw_creds)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        
+        # Build Drive service
+        drive_service = build('drive', 'v3', credentials=creds)
+        
+        # Prepare file metadata
+        file_metadata = {
+            'name': filename,
+            'mimeType': 'image/jpeg'
+        }
+        
+        # Add to specific folder if provided
+        if folder_id:
+            file_metadata['parents'] = [folder_id]
+        
+        # Upload file
+        media = MediaIoBaseUpload(image_file, mimetype='image/jpeg', resumable=True)
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink, webContentLink'
+        ).execute()
+        
+        file_id = file.get('id')
+        
+        # Make file publicly accessible
+        drive_service.permissions().create(
+            fileId=file_id,
+            body={'type': 'anyone', 'role': 'reader'}
+        ).execute()
+        
+        # Return direct image URL
+        image_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+        print(f"✅ Uploaded to Drive: {image_url}")
+        return image_url
+    
+    except Exception as e:
+        print(f"❌ Drive upload error: {e}")
+        return None
+
+# ---------------- HYBRID IMAGE HANDLER ----------------
+def process_image_hybrid(image_file, filename):
+    """
+    Try Google Drive first (full quality), fallback to compressed base64
+    """
+    # Reset file pointer
+    image_file.seek(0)
+    
+    # Try Google Drive first (PRIMARY - FULL QUALITY)
+    folder_id = os.environ.get("DRIVE_FOLDER_ID")  # Optional: specific folder
+    drive_url = upload_to_drive(image_file, filename, folder_id)
+    
+    if drive_url:
+        print(f"✅ Using Google Drive (full quality)")
+        return drive_url
+    
+    # Fallback to compressed base64 (BACKUP)
+    print("⚠️ Drive failed, using compressed fallback")
+    image_file.seek(0)
+    compressed = compress_image_smart(image_file)
+    
+    if compressed:
+        print("✅ Using compressed base64")
+        return compressed
+    
+    print("❌ Both methods failed")
+    return ""
+
 # ---------------- EMAIL NOTIFICATION ----------------
 def send_email_notification(subject, message):
     """Send email notification using Gmail SMTP"""
@@ -784,13 +873,20 @@ if st.session_state.admin_logged:
         
         if add and name and images:
             encoded = []
+            upload_status = []
             
-            with st.spinner("Processing images..."):
+            with st.spinner("Uploading images to Google Drive..."):
                 for idx, img in enumerate(images[:3], 1):
-                    processed = compress_image_smart(img)
+                    filename = f"{STORE_NAME.replace(' ', '_')}_{name.replace(' ', '_')}_{idx}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
+                    
+                    processed = process_image_hybrid(img, filename)
                     if processed:
                         encoded.append(processed)
-                        st.success(f"✅ Image {idx} processed")
+                        if processed.startswith("http"):
+                            upload_status.append(f"Image {idx}: Drive ✅")
+                        else:
+                            upload_status.append(f"Image {idx}: Compressed ⚠️")
+                        st.success(upload_status[-1])
                     else:
                         st.error(f"❌ Failed to process image {idx}")
                         st.stop()
