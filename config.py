@@ -1,99 +1,92 @@
 # ==========================================
-# STORE CONFIGURATION FILE
-# ==========================================
-# Edit this file to customize your store!
-# No coding knowledge required - just change the values below
+# STORE CONFIGURATION - ACCESSORIZE WITH YVON
 # ==========================================
 
 # ==========================================
 # STORE INFORMATION
 # ==========================================
-STORE_NAME = "Retro Jersey Shop"
-STORE_TAGLINE = "Authentic vintage jerseys"
-STORE_DESCRIPTION = "Premium Vintage Jerseys • Authentic Heritage • Delivered Nationwide"
+STORE_NAME = "Accessorize with Yvon"
+STORE_TAGLINE = "Curated jewelry, beauty & handmade treasures"
+STORE_DESCRIPTION = "High-quality jewelry • Body splashes • Hair accessories • Crocheted fashion"
 
 # Logo settings
-LOGO_TEXT = "RJ"  # 1-2 letters work best
-LOGO_SHAPE = "square"  # Options: "square", "circle"
+LOGO_TEXT = "AY"  # Accessorize Yvon
+LOGO_SHAPE = "circle"  # Options: "square", "circle"
 
 # ==========================================
 # CONTACT INFORMATION
 # ==========================================
-PHONE_NUMBER = "0541468102"
-WHATSAPP_NUMBER = "0541468102"  # Can be same as phone
-SNAPCHAT_HANDLE = "@retroshop"
+PHONE_NUMBER = "0545651573"
+WHATSAPP_NUMBER = "0545651573"
+SNAPCHAT_HANDLE = "@yvonisdark"
 LOCATION = "Accra, Ghana"
-EMAIL = "info@retrojersey.shop"  # Optional
+EMAIL = "accessorize@yvon.com"
+TIKTOK_HANDLE = "@knottycrafts"
 
 # ==========================================
-# COLOR SCHEME
+# COLOR SCHEME - Elegant Pink & Gold
 # ==========================================
-# You can use color names or hex codes (e.g., #FF5733)
 
 # Background colors
-BACKGROUND_COLOR = "#f7f9fc"  # Light blue-gray (easy on eyes)
+BACKGROUND_COLOR = "#fef3f2"  # Soft pink/peach
 CARD_BACKGROUND = "#ffffff"   # White
 
-# Primary colors (buttons, accents)
-PRIMARY_COLOR = "#2874f0"      # Blue
-BUTTON_COLOR = "#ffd814"       # Amazon-style yellow
-BUTTON_TEXT_COLOR = "#0f1111"  # Dark text on yellow button
+# Primary colors (gold/rose gold theme)
+PRIMARY_COLOR = "#d97706"      # Gold/amber
+BUTTON_COLOR = "#f59e0b"       # Golden yellow
+BUTTON_TEXT_COLOR = "#ffffff"  # White text
 
 # Text colors
-TEXT_PRIMARY = "#232f3e"       # Dark text
-TEXT_SECONDARY = "#565959"     # Gray text
-PRICE_COLOR = "#b12704"        # Red (Amazon style)
+TEXT_PRIMARY = "#78350f"       # Dark brown
+TEXT_SECONDARY = "#92400e"     # Medium brown
+PRICE_COLOR = "#dc2626"        # Red
 
 # Navigation bar
 NAV_BACKGROUND = "#ffffff"
-NAV_TEXT_COLOR = "#232f3e"
+NAV_TEXT_COLOR = "#78350f"
 
 # Footer
-FOOTER_BACKGROUND = "#232f3e"
+FOOTER_BACKGROUND = "#78350f"  # Dark brown
 FOOTER_TEXT_COLOR = "#ffffff"
 
 # ==========================================
 # CURRENCY
 # ==========================================
-CURRENCY = "GHS"  # Change to: USD, EUR, NGN, etc.
-CURRENCY_SYMBOL = "GHS"  # What shows before price
+CURRENCY = "GHS"
+CURRENCY_SYMBOL = "GHS"
 
 # ==========================================
 # FEATURE TOGGLES
 # ==========================================
-# Turn features ON (True) or OFF (False)
-
-SHOW_ADMIN_BUTTON = True          # Show admin button on shop page
-ENABLE_SEARCH = True              # Show search box
-ENABLE_PRODUCT_DESCRIPTION = True # Show product descriptions
-SHOW_STOCK_BADGE = True           # Show "In Stock" badge on products
-SHOW_STATISTICS = True            # Show stats in admin dashboard
+SHOW_ADMIN_BUTTON = True
+ENABLE_SEARCH = True
+ENABLE_PRODUCT_DESCRIPTION = True
+SHOW_STOCK_BADGE = True
+SHOW_STATISTICS = True
 
 # ==========================================
 # PRODUCT DISPLAY
 # ==========================================
-PRODUCTS_PER_ROW = 3              # How many products per row (1-4)
-PRODUCT_IMAGE_HEIGHT = "300px"    # Height of product images
-CARD_STYLE = "modern"             # Options: "modern", "minimal", "premium"
+PRODUCTS_PER_ROW = 3
+PRODUCT_IMAGE_HEIGHT = "300px"
+CARD_STYLE = "modern"
 
 # ==========================================
 # ORDER SETTINGS
 # ==========================================
-REQUIRE_PHONE = True              # Make phone number required
-REQUIRE_LOCATION = True           # Make location required
-MIN_ORDER_QUANTITY = 1            # Minimum items per order
-MAX_ORDER_QUANTITY = 100          # Maximum items per order
+REQUIRE_PHONE = True
+REQUIRE_LOCATION = True
+MIN_ORDER_QUANTITY = 1
+MAX_ORDER_QUANTITY = 50
 
 # ==========================================
 # NOTIFICATION SETTINGS
 # ==========================================
-# Order confirmation messages
 ORDER_SUCCESS_TITLE = "Order Placed Successfully!"
-ORDER_SUCCESS_MESSAGE = "Thank you for your order! We'll contact you via WhatsApp or SMS with your payment reference code."
+ORDER_SUCCESS_MESSAGE = "Thank you for your order! We'll contact you via WhatsApp to confirm and arrange delivery."
 
-# Admin notification message format (Telegram)
 TELEGRAM_NOTIFICATION_TEMPLATE = """
-🛒 <b>NEW ORDER RECEIVED!</b>
+🛍️ <b>NEW ORDER - ACCESSORIZE WITH YVON</b>
 
 📦 <b>Product:</b> {product_name}
 👤 <b>Customer:</b> {customer_name}
@@ -110,32 +103,28 @@ Status: ⏳ Pending
 # ==========================================
 # GOOGLE SHEETS SETTINGS
 # ==========================================
-SHEET_NAME = "retro_jersey_shop"  # Your Google Sheet name
+SHEET_NAME = "accessorize_with_yvon"
 PRODUCTS_WORKSHEET = "products"
 ORDERS_WORKSHEET = "orders"
 
 # ==========================================
 # TEXT CUSTOMIZATION
 # ==========================================
-# Button labels
-BUTTON_ADD_TO_CART = "Add to Cart"
+BUTTON_ADD_TO_CART = "Order Now"
 BUTTON_PLACE_ORDER = "Place Order"
-BUTTON_OUT_OF_STOCK = "Unavailable"
+BUTTON_OUT_OF_STOCK = "Sold Out"
 BUTTON_ADMIN_LOGIN = "Login to Dashboard"
 
-# Section headers
-HEADER_FEATURED_PRODUCTS = "Featured Products"
-HEADER_CHECKOUT = "Checkout"
+HEADER_FEATURED_PRODUCTS = "Our Collection"
+HEADER_CHECKOUT = "Complete Your Order"
 HEADER_ORDER_SUMMARY = "Order Summary"
 HEADER_ADMIN_DASHBOARD = "Admin Dashboard"
 
-# Form labels
-LABEL_CUSTOMER_NAME = "Full Name"
+LABEL_CUSTOMER_NAME = "Your Name"
 LABEL_PHONE = "Phone / WhatsApp"
 LABEL_LOCATION = "Delivery Location"
 LABEL_QUANTITY = "Quantity"
 
-# Status messages
 STATUS_IN_STOCK = "In Stock"
 STATUS_OUT_OF_STOCK = "Out of Stock"
 STATUS_PENDING = "Pending"
@@ -143,31 +132,34 @@ STATUS_PENDING = "Pending"
 # ==========================================
 # ADVANCED CUSTOMIZATION
 # ==========================================
-
-# Custom CSS (for advanced users)
 CUSTOM_CSS = """
-/* Add your custom CSS here */
+/* Elegant feminine styling */
+.product-card {
+    border: 2px solid #fed7aa !important;
+}
+.product-card:hover {
+    border-color: #f59e0b !important;
+}
 """
 
-# Footer links (add your social media)
+# Footer links
 FOOTER_LINKS = [
-    {"icon": "📞", "text": f"{PHONE_NUMBER}", "url": f"tel:{PHONE_NUMBER}"},
-    {"icon": "📱", "text": f"Snapchat: {SNAPCHAT_HANDLE}", "url": "#"},
+    {"icon": "📞", "text": "0545651573 / 0507262613", "url": "tel:0545651573"},
+    {"icon": "👻", "text": f"Snapchat: {SNAPCHAT_HANDLE}", "url": "#"},
+    {"icon": "🎵", "text": f"TikTok: {TIKTOK_HANDLE}", "url": "#"},
     {"icon": "📍", "text": LOCATION, "url": "#"},
 ]
 
 # ==========================================
-# BUSINESS INFORMATION (for invoices/receipts)
+# BUSINESS INFORMATION
 # ==========================================
 BUSINESS_NAME = STORE_NAME
 BUSINESS_ADDRESS = f"{LOCATION}"
-BUSINESS_REG_NUMBER = ""  # Optional: Your business registration number
-TAX_ID = ""  # Optional: Tax ID if applicable
+BUSINESS_REG_NUMBER = ""
+TAX_ID = ""
 
 # ==========================================
 # REFERENCE CODE FORMAT
 # ==========================================
-# How order reference codes are generated
-# Format: PREFIX-PRODUCT-LOCATION-RANDOM
-REFERENCE_PREFIX = "RJ"  # Change to your store initials
-REFERENCE_LENGTH = 4      # Length of random number (4 = 1000-9999)
+REFERENCE_PREFIX = "AY"  # Accessorize Yvon
+REFERENCE_LENGTH = 4
