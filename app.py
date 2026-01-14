@@ -118,8 +118,8 @@ h1, h2, h3, h4 {{
 }}
 
 .logo-icon {{
-    width: 42px;
-    height: 42px;
+    width: 46px;
+    height: 46px;
     background: {PRIMARY_COLOR};
     border-radius: {logo_border_radius};
     color: white;
@@ -278,7 +278,7 @@ h1, h2, h3, h4 {{
     background: {CARD_BACKGROUND};
     border: 1px solid #e7e9ec;
     border-radius: 8px;
-    padding: 30px;
+    padding: 15px;
     margin-bottom: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }}
