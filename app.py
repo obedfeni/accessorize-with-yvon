@@ -13,6 +13,11 @@ from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 import random
 import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from PIL import Image
+import io
 
 # Import configuration
 try:
@@ -29,6 +34,107 @@ def generate_reference(product_name, location):
     max_rand = (10 ** REFERENCE_LENGTH) - 1
     rand = random.randint(min_rand, max_rand)
     return f"{REFERENCE_PREFIX}-{product_code}-{location_code}-{rand}"
+
+# ---------------- SMART IMAGE COMPRESSION ----------------
+def compress_image_smart(image_file):
+    """Smart compression preserving quality while staying under 50k limit"""
+    try:
+        img = Image.open(image_file)
+        
+        if img.mode == 'RGBA':
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[3] if len(img.split()) == 4 else None)
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        original_width, original_height = img.size
+        aspect_ratio = original_width / original_height
+        
+        if aspect_ratio > 1:
+            target_width = 750
+            target_height = int(target_width / aspect_ratio)
+        else:
+            target_height = 750
+            target_width = int(target_height * aspect_ratio)
+        
+        if original_width > target_width or original_height > target_height:
+            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        output = io.BytesIO()
+        quality = 88
+        
+        attempts = 0
+        while attempts < 15:
+            output.seek(0)
+            output.truncate()
+            img.save(output, format='JPEG', quality=quality, optimize=True, progressive=True)
+            
+            output.seek(0)
+            encoded = base64.b64encode(output.getvalue()).decode()
+            base64_length = len(encoded)
+            
+            if base64_length < 35000:
+                return f"data:image/jpeg;base64,{encoded}"
+            
+            attempts += 1
+            
+            if quality > 75:
+                quality -= 3
+            elif quality > 60:
+                quality -= 5
+            else:
+                quality -= 7
+            
+            if quality < 45 and attempts < 12:
+                new_width = int(img.width * 0.92)
+                new_height = int(img.height * 0.92)
+                if new_width > 300 and new_height > 300:
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    quality = 82
+        
+        final_width = 650
+        final_height = int(final_width / (original_width / original_height))
+        img = img.resize((final_width, final_height), Image.Resampling.LANCZOS)
+        
+        output.seek(0)
+        output.truncate()
+        img.save(output, format='JPEG', quality=75, optimize=True, progressive=True)
+        
+        output.seek(0)
+        encoded = base64.b64encode(output.getvalue()).decode()
+        return f"data:image/jpeg;base64,{encoded}"
+    
+    except Exception as e:
+        print(f"Image compression error: {e}")
+        return None
+
+# ---------------- EMAIL NOTIFICATION ----------------
+def send_email_notification(subject, message):
+    """Send email notification using Gmail SMTP"""
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    email_password = os.environ.get("EMAIL_APP_PASSWORD")
+    
+    if not admin_email or not email_password:
+        return False
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = admin_email
+        msg['To'] = admin_email
+        msg['Subject'] = subject
+        
+        msg.attach(MIMEText(message, 'html'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(admin_email, email_password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
 # ---------------- TELEGRAM NOTIFICATION ----------------
 def send_telegram_notification(message):
@@ -47,7 +153,8 @@ def send_telegram_notification(message):
         }
         response = requests.post(url, data=data, timeout=10)
         return response.status_code == 200
-    except:
+    except Exception as e:
+        print(f"Telegram error: {e}")
         return False
 
 # ---------------- PAGE CONFIG ----------------
@@ -79,12 +186,12 @@ header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- DYNAMIC THEME BASED ON CONFIG ----------------
-logo_border_radius = "50%" if LOGO_SHAPE == "circle" else "8px"
+# ---------------- PROFESSIONAL THEME (Mobile Optimized) ----------------
+logo_border_radius = "50%" if LOGO_SHAPE == "circle" else "12px"
 
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 html, body, .stApp {{ 
     background: {BACKGROUND_COLOR};
@@ -97,15 +204,15 @@ h1, h2, h3, h4 {{
     font-weight: 600;
 }}
 
-/* Top Navigation Bar */
+/* Professional Navigation Bar */
 .top-nav {{
     background: {NAV_BACKGROUND};
-    padding: 16px 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    padding: 20px 40px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     margin-bottom: 0;
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -114,287 +221,383 @@ h1, h2, h3, h4 {{
 .logo-container {{
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    flex: 1;
 }}
 
 .logo-icon {{
-    width: 46px;
-    height: 46px;
-    background: {PRIMARY_COLOR};
+    width: 65px;
+    height: 65px;
+    background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {BUTTON_COLOR} 100%);
     border-radius: {logo_border_radius};
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 20px;
+    font-weight: 800;
+    font-size: 28px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}}
+
+.logo-text-container {{
+    flex: 1;
 }}
 
 .logo-text {{
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: {NAV_TEXT_COLOR};
     margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
 }}
 
 .nav-tagline {{
-    font-size: 11px;
+    font-size: 13px;
     color: {TEXT_SECONDARY};
-    margin: 0;
-    font-style: italic;
+    margin: 4px 0 0 0;
+    font-weight: 500;
 }}
 
+/* Mobile responsive */
+@media (max-width: 768px) {{
+    .top-nav {{
+        padding: 15px 20px;
+    }}
+    .logo-icon {{
+        width: 55px;
+        height: 55px;
+        font-size: 24px;
+    }}
+    .logo-text {{
+        font-size: 20px;
+    }}
+    .nav-tagline {{
+        font-size: 11px;
+    }}
+}}
+
+/* Content Wrapper */
 .content-wrapper {{
     max-width: 1400px;
     margin: 0 auto;
-    padding: 30px 20px;
+    padding: 40px 20px;
     background: {BACKGROUND_COLOR};
 }}
 
-.section-header {{
-    font-size: 24px;
-    font-weight: 600;
-    color: {TEXT_PRIMARY};
-    margin: 30px 0 20px 0;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #e7e9ec;
+@media (max-width: 768px) {{
+    .content-wrapper {{
+        padding: 25px 15px;
+    }}
 }}
 
+/* Section Headers */
+.section-header {{
+    font-size: 28px;
+    font-weight: 700;
+    color: {TEXT_PRIMARY};
+    margin: 40px 0 25px 0;
+    padding-bottom: 15px;
+    border-bottom: 3px solid {PRIMARY_COLOR};
+}}
+
+/* Premium Product Cards */
 .product-card {{
     background: {CARD_BACKGROUND};
     border: 1px solid #e7e9ec;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }}
 
 .product-card:hover {{
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    border-color: #c7c9cc;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    border-color: {PRIMARY_COLOR};
 }}
 
 .product-image-wrapper {{
     width: 100%;
     height: {PRODUCT_IMAGE_HEIGHT};
-    background: {CARD_BACKGROUND};
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 25px;
     border-bottom: 1px solid #e7e9ec;
     position: relative;
+    overflow: hidden;
 }}
 
 .product-image-wrapper img {{
     width: 100%;
     height: 100%;
     object-fit: contain;
+    transition: transform 0.3s ease;
+}}
+
+.product-card:hover .product-image-wrapper img {{
+    transform: scale(1.05);
 }}
 
 .stock-badge {{
     position: absolute;
-    top: 12px;
-    right: 12px;
-    padding: 4px 12px;
-    border-radius: 4px;
+    top: 15px;
+    right: 15px;
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }}
 
 .badge-in-stock {{
-    background: #e7f5e9;
-    color: #067d62;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
 }}
 
 .badge-out-stock {{
-    background: #fce8e8;
-    color: #c7254e;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
 }}
 
 .product-info {{
-    padding: 16px;
+    padding: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
 }}
 
 .product-title {{
-    font-size: 16px;
-    font-weight: 500;
-    color: {PRIMARY_COLOR};
-    margin-bottom: 8px;
+    font-size: 17px;
+    font-weight: 600;
+    color: {TEXT_PRIMARY};
+    margin-bottom: 10px;
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }}
 
 .product-description {{
-    font-size: 13px;
+    font-size: 14px;
     color: {TEXT_SECONDARY};
-    line-height: 1.5;
-    margin-bottom: 12px;
+    line-height: 1.6;
+    margin-bottom: 15px;
     flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }}
 
 .product-price {{
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: {PRICE_COLOR};
-    margin-bottom: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
 }}
 
 .price-currency {{
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     color: {TEXT_SECONDARY};
-    margin-right: 2px;
 }}
 
+/* Premium Buttons */
 .stButton>button {{
-    background: {BUTTON_COLOR};
+    background: linear-gradient(135deg, {BUTTON_COLOR} 0%, {PRIMARY_COLOR} 100%);
     color: {BUTTON_TEXT_COLOR};
-    border: 1px solid {BUTTON_COLOR};
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-weight: 600;
-    font-size: 14px;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 24px;
+    font-weight: 700;
+    font-size: 15px;
     width: 100%;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(213, 217, 217, 0.5);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }}
 
 .stButton>button:hover {{
-    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }}
 
 .stButton>button:disabled {{
-    background: #f0f2f2;
-    color: {TEXT_SECONDARY};
-    border-color: #d5d9d9;
+    background: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
 }}
 
+/* Small Admin Button */
+.admin-btn-small button {{
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    width: auto !important;
+    min-width: 110px !important;
+}}
+
+/* Admin Container */
 .admin-container {{
     background: {CARD_BACKGROUND};
     border: 1px solid #e7e9ec;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }}
 
+/* Stats Cards */
 .stat-card {{
-    background: {CARD_BACKGROUND};
+    background: linear-gradient(135deg, {CARD_BACKGROUND} 0%, #fafafa 100%);
     border: 1px solid #e7e9ec;
-    border-radius: 8px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 28px;
     text-align: center;
+    transition: all 0.3s ease;
+}}
+
+.stat-card:hover {{
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }}
 
 .stat-number {{
-    font-size: 32px;
-    font-weight: 700;
-    color: {TEXT_PRIMARY};
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {BUTTON_COLOR} 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 8px;
 }}
 
 .stat-label {{
     font-size: 14px;
     color: {TEXT_SECONDARY};
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }}
 
+/* Forms */
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stNumberInput>div>div>input {{
-    border-radius: 4px;
-    border: 1px solid #d5d9d9;
-    padding: 10px 12px;
-    font-size: 14px;
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    padding: 12px 16px;
+    font-size: 15px;
+    transition: all 0.3s ease;
 }}
 
 .stTextInput>div>div>input:focus,
 .stTextArea>div>div>textarea:focus,
 .stNumberInput>div>div>input:focus {{
     border-color: {PRIMARY_COLOR};
-    box-shadow: 0 0 0 3px rgba(40, 116, 240, 0.1);
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1);
 }}
 
+/* Order Container */
 .order-container {{
     background: {CARD_BACKGROUND};
-    border: 1px solid #e7e9ec;
-    border-radius: 8px;
-    padding: 30px;
-    margin: 30px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 2px solid #e7e9ec;
+    border-radius: 16px;
+    padding: 35px;
+    margin: 40px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }}
 
 .order-summary {{
-    background: #f0f2f2;
-    padding: 20px;
-    border-radius: 8px;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    padding: 25px;
+    border-radius: 12px;
     margin-top: 20px;
+    border: 1px solid #e5e7eb;
 }}
 
+/* Success Message */
 .success-message {{
-    background: #dff0d8;
-    border: 1px solid #d6e9c6;
-    color: #3c763d;
-    padding: 20px;
-    border-radius: 8px;
-    margin: 20px 0;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border: 2px solid #6ee7b7;
+    color: #065f46;
+    padding: 25px;
+    border-radius: 12px;
+    margin: 25px 0;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }}
 
+/* Footer */
 .footer-section {{
     background: {FOOTER_BACKGROUND};
     color: {FOOTER_TEXT_COLOR};
-    padding: 40px 20px;
-    margin-top: 60px;
+    padding: 50px 20px;
+    margin-top: 80px;
     text-align: center;
+    border-top: 4px solid {PRIMARY_COLOR};
 }}
 
 .footer-links {{
     display: flex;
     justify-content: center;
-    gap: 30px;
-    margin-bottom: 20px;
+    gap: 35px;
+    margin-bottom: 25px;
     flex-wrap: wrap;
 }}
 
 .footer-link {{
     color: {FOOTER_TEXT_COLOR};
-    font-size: 14px;
+    font-size: 15px;
     text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }}
 
 .footer-link:hover {{
-    text-decoration: underline;
+    color: {BUTTON_COLOR};
+    transform: translateY(-2px);
 }}
 
 .footer-copyright {{
-    color: #999;
-    font-size: 12px;
-    margin-top: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    margin-top: 25px;
+    font-weight: 500;
 }}
 
+/* Admin Login */
 .admin-login-box {{
-    max-width: 400px;
-    margin: 60px auto;
+    max-width: 420px;
+    margin: 80px auto;
     background: {CARD_BACKGROUND};
     border: 1px solid #e7e9ec;
-    border-radius: 8px;
-    padding: 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    padding: 45px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }}
 
+/* Info Box */
 .info-box {{
-    background: #e7f5ff;
-    border: 1px solid #b3d9ff;
-    border-radius: 8px;
-    padding: 16px;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border: 1px solid #93c5fd;
+    border-radius: 10px;
+    padding: 18px;
     margin: 20px 0;
     font-size: 14px;
-    color: {PRIMARY_COLOR};
+    color: #1e40af;
+    font-weight: 500;
 }}
 
 {CUSTOM_CSS}
@@ -443,13 +646,13 @@ def load_products():
 products_df = load_products()
 
 # ==============================
-# TOP NAVIGATION
+# PROFESSIONAL NAVIGATION
 # ==============================
 st.markdown(f"""
 <div class='top-nav'>
     <div class='logo-container'>
         <div class='logo-icon'>{LOGO_TEXT}</div>
-        <div>
+        <div class='logo-text-container'>
             <div class='logo-text'>{STORE_NAME}</div>
             <div class='nav-tagline'>{STORE_TAGLINE}</div>
         </div>
@@ -460,12 +663,12 @@ st.markdown(f"""
 st.markdown("<div class='content-wrapper'>", unsafe_allow_html=True)
 
 # ==============================
-# 🔐 ADMIN LOGIN
+# ADMIN LOGIN
 # ==============================
 if st.session_state.show_admin_login and not st.session_state.admin_logged:
     st.markdown("<div class='admin-login-box'>", unsafe_allow_html=True)
     st.markdown("### 🔐 Admin Login")
-    st.markdown("Enter your credentials to access the dashboard")
+    st.markdown("Enter credentials to access dashboard")
     
     password = st.text_input("Password", type="password")
     
@@ -487,12 +690,12 @@ if st.session_state.show_admin_login and not st.session_state.admin_logged:
     st.stop()
 
 # ==============================
-# 📊 ADMIN DASHBOARD
+# ADMIN DASHBOARD
 # ==============================
 if st.session_state.admin_logged:
     
     st.markdown(f"<h1 style='color:{TEXT_PRIMARY}; margin-bottom:10px;'>{HEADER_ADMIN_DASHBOARD}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:{TEXT_SECONDARY}; margin-bottom:30px;'>Manage your store products and orders</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{TEXT_SECONDARY}; margin-bottom:30px; font-size:16px;'>Manage products, orders & notifications</p>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([3, 1])
     with col2:
@@ -500,20 +703,26 @@ if st.session_state.admin_logged:
             st.session_state.admin_logged = False
             st.rerun()
     
-    # Telegram configuration check
+    # Check notifications
     telegram_configured = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
+    email_configured = bool(os.environ.get("ADMIN_EMAIL") and os.environ.get("EMAIL_APP_PASSWORD"))
     
-    if not telegram_configured:
+    if not telegram_configured and not email_configured:
         st.markdown("""
         <div class='info-box'>
-            ⚠️ <strong>Telegram notifications not configured!</strong><br>
-            Set up your Telegram bot to receive instant order notifications.
+            ⚠️ <strong>No notifications configured!</strong> Set up Telegram or Email to receive order alerts.
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.markdown("""
-        <div style='background:#e7f5e9; border:1px solid #c6e9d0; border-radius:8px; padding:16px; margin:20px 0;'>
-            ✅ <strong>Telegram notifications active!</strong> You'll receive instant alerts for new orders.
+        notif_status = []
+        if telegram_configured:
+            notif_status.append("Telegram")
+        if email_configured:
+            notif_status.append("Email")
+        
+        st.markdown(f"""
+        <div style='background:linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border:2px solid #6ee7b7; border-radius:10px; padding:18px; margin:20px 0;'>
+            ✅ <strong>Notifications active via: {', '.join(notif_status)}</strong>
         </div>
         """, unsafe_allow_html=True)
     
@@ -531,7 +740,7 @@ if st.session_state.admin_logged:
             st.markdown(f"""
             <div class='stat-card'>
                 <div class='stat-number'>{len(products_df)}</div>
-                <div class='stat-label'>Total Products</div>
+                <div class='stat-label'>Products</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -539,7 +748,7 @@ if st.session_state.admin_logged:
             st.markdown(f"""
             <div class='stat-card'>
                 <div class='stat-number'>{len(orders_df)}</div>
-                <div class='stat-label'>Total Orders</div>
+                <div class='stat-label'>Orders</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -548,7 +757,7 @@ if st.session_state.admin_logged:
             st.markdown(f"""
             <div class='stat-card'>
                 <div class='stat-number'>{CURRENCY_SYMBOL} {total_revenue:,.0f}</div>
-                <div class='stat-label'>Total Revenue</div>
+                <div class='stat-label'>Revenue</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -575,10 +784,17 @@ if st.session_state.admin_logged:
         
         if add and name and images:
             encoded = []
-            for img in images[:3]:
-                encoded.append(
-                    f"data:image/png;base64,{base64.b64encode(img.read()).decode()}"
-                )
+            
+            with st.spinner("Processing images..."):
+                for idx, img in enumerate(images[:3], 1):
+                    processed = compress_image_smart(img)
+                    if processed:
+                        encoded.append(processed)
+                        st.success(f"✅ Image {idx} processed")
+                    else:
+                        st.error(f"❌ Failed to process image {idx}")
+                        st.stop()
+            
             while len(encoded) < 3:
                 encoded.append("")
             
@@ -609,7 +825,7 @@ if st.session_state.admin_logged:
                 st.markdown(f"**{row['name']}**")
                 st.markdown(f"Stock: {row['stock']} | {CURRENCY_SYMBOL} {row['price']}")
                 
-                if st.button(f"Delete Product", key=f"del_{row['id']}", use_container_width=True):
+                if st.button(f"Delete", key=f"del_{row['id']}", use_container_width=True):
                     products_sheet.delete_rows(row["_row"])
                     st.success("Product deleted!")
                     st.rerun()
@@ -627,24 +843,52 @@ if st.session_state.admin_logged:
         st.info("No orders yet")
     st.markdown("</div>", unsafe_allow_html=True)
     
+    # SETUP GUIDE
+    st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
+    st.markdown("### 🔔 Notification Setup")
+    
+    tab1, tab2 = st.tabs(["📧 Email", "📱 Telegram"])
+    
+    with tab1:
+        st.markdown("""
+        **Gmail Setup (5 min)**
+        1. [Google Account](https://myaccount.google.com) → Security
+        2. Enable 2-Step Verification
+        3. App passwords → Mail → Generate
+        4. Add to Render: `ADMIN_EMAIL` & `EMAIL_APP_PASSWORD`
+        """)
+    
+    with tab2:
+        st.markdown("""
+        **Telegram Setup (5 min)**
+        1. Search `@BotFather` → `/newbot`
+        2. Search `@userinfobot` → get Chat ID
+        3. Add to Render: `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID`
+        4. Send `/start` to your bot
+        """)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     st.stop()
 
 # ==============================
-# 🛍️ PUBLIC SHOP
+# PUBLIC SHOP
 # ==============================
 
-# Admin button
+# Small admin button
 if SHOW_ADMIN_BUTTON:
     col1, col2, col3 = st.columns([2, 1, 1])
     with col3:
-        if st.button("🔐 Admin", use_container_width=True):
+        st.markdown("<div class='admin-btn-small'>", unsafe_allow_html=True)
+        if st.button("🔐 Admin"):
             st.session_state.show_admin_login = True
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(f"<div class='section-header'>{HEADER_FEATURED_PRODUCTS}</div>", unsafe_allow_html=True)
 
 if products_df.empty:
-    st.info("🏗️ No products available at the moment. Check back soon!")
+    st.info("🏗️ No products available. Check back soon!")
 else:
     cols = st.columns(PRODUCTS_PER_ROW)
     for idx, row in products_df.iterrows():
@@ -705,7 +949,7 @@ if "selected" in st.session_state:
             <strong>{HEADER_ORDER_SUMMARY}</strong><br>
             Item: {p['name']}<br>
             Quantity: {qty}<br>
-            <strong style='font-size:18px; color:{PRICE_COLOR};'>Total: {CURRENCY_SYMBOL} {total}</strong>
+            <strong style='font-size:20px; color:{PRICE_COLOR};'>Total: {CURRENCY_SYMBOL} {total}</strong>
         </div>
         """, unsafe_allow_html=True)
         
@@ -713,40 +957,51 @@ if "selected" in st.session_state:
         
         if send and name and phone and location:
             reference = generate_reference(p["name"], location)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             orders_sheet.append_row([
-                name,
-                phone,
-                location,
-                p["name"],
-                qty,
-                total,
-                reference,
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                STATUS_PENDING
+                name, phone, location, p["name"],
+                qty, total, reference, timestamp, STATUS_PENDING
             ])
             
-            # Send Telegram notification
-            telegram_message = TELEGRAM_NOTIFICATION_TEMPLATE.format(
-                product_name=p['name'],
-                customer_name=name,
-                phone=phone,
-                location=location,
-                quantity=qty,
-                currency=CURRENCY_SYMBOL,
-                total=total,
-                reference=reference,
-                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Notifications
+            telegram_msg = TELEGRAM_NOTIFICATION_TEMPLATE.format(
+                product_name=p['name'], customer_name=name, phone=phone,
+                location=location, quantity=qty, currency=CURRENCY_SYMBOL,
+                total=total, reference=reference, timestamp=timestamp
             )
-            send_telegram_notification(telegram_message)
+            telegram_sent = send_telegram_notification(telegram_msg)
+            
+            email_subject = f"🛒 New Order: {reference}"
+            email_body = f"""
+            <html><body style='font-family:Arial,sans-serif;'>
+                <h2 style='color:#d97706;'>New Order Received!</h2>
+                <table style='border-collapse:collapse;width:100%;'>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Product:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{p['name']}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Customer:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{name}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Phone:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{phone}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Location:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{location}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Quantity:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{qty}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Total:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{CURRENCY_SYMBOL} {total}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Reference:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{reference}</td></tr>
+                </table>
+                <p style='margin-top:20px;color:#666;'>Status: Pending</p>
+            </body></html>
+            """
+            email_sent = send_email_notification(email_subject, email_body)
+            
+            notif_info = []
+            if telegram_sent:
+                notif_info.append("Telegram")
+            if email_sent:
+                notif_info.append("Email")
+            notif_text = f" (Sent via {', '.join(notif_info)})" if notif_info else ""
             
             st.markdown(f"""
             <div class='success-message'>
-                <h3 style='margin:0 0 10px 0;'>✅ {ORDER_SUCCESS_TITLE}</h3>
-                <p style='margin:0;'>
-                    {ORDER_SUCCESS_MESSAGE}
-                </p>
-                <p style='margin:10px 0 0 0;'><strong>Total: {CURRENCY_SYMBOL} {total}</strong></p>
+                <h3 style='margin:0 0 12px 0;'>✅ {ORDER_SUCCESS_TITLE}{notif_text}</h3>
+                <p style='margin:0; font-size:15px;'>{ORDER_SUCCESS_MESSAGE}</p>
+                <p style='margin:15px 0 0 0;'><strong style='font-size:18px;'>Total: {CURRENCY_SYMBOL} {total}</strong></p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -759,7 +1014,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ==============================
 # FOOTER
 # ==============================
-footer_links_html = " <span style='color:#999;'>|</span> ".join([
+footer_links_html = " <span style='color:rgba(255,255,255,0.5);'>|</span> ".join([
     f"<a href='{link['url']}' class='footer-link'>{link['icon']} {link['text']}</a>"
     for link in FOOTER_LINKS
 ])
