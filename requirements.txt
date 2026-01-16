@@ -6,6 +6,6 @@ streamlit
 gspread
 oauth2client
 pandas
+Pillow
 requests
-pillow
 cloudinary
