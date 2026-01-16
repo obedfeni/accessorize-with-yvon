@@ -5,12 +5,12 @@
 # ==========================================
 # STORE INFORMATION
 # ==========================================
-STORE_NAME = "Accessorize with Yvon"
+STORE_NAME = "Accessorize with Yvon & Knottycrafts Shop"
 STORE_TAGLINE = "Curated jewelry, beauty & handmade treasures"
 STORE_DESCRIPTION = "High-quality jewelry • Body splashes • Hair accessories • Crocheted fashion"
 
 # Logo settings
-LOGO_TEXT = "AY"  # Accessorize Yvon
+LOGO_TEXT = "AYK"  # Accessorize Yvon
 LOGO_SHAPE = "circle"  # Options: "square", "circle"
 
 # ==========================================
@@ -161,5 +161,5 @@ TAX_ID = ""
 # ==========================================
 # REFERENCE CODE FORMAT
 # ==========================================
-REFERENCE_PREFIX = "AY"  # Accessorize Yvon
+REFERENCE_PREFIX = "AYK"  # Accessorize Yvon
 REFERENCE_LENGTH = 4
