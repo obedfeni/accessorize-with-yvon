@@ -56,31 +56,45 @@ def upload_to_cloudinary(image_file, filename):
         # Reset file pointer
         image_file.seek(0)
         
-        # Create a unique public_id using filename
-        public_id = f"{STORE_NAME.replace(' ', '_')}/{filename.replace('.jpg', '')}"
+        # Read file content as bytes
+        file_bytes = image_file.read()
+        
+        # Reset pointer again for potential retries
+        image_file.seek(0)
+        
+        # Create a clean public_id
+        # Remove special characters and keep it simple
+        clean_filename = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
+        clean_filename = ''.join(c for c in clean_filename if c.isalnum() or c in ['_', '-'])
+        
+        public_id = f"accessorize_yvon/{clean_filename}"
         
         # Upload with optimization settings
         result = cloudinary.uploader.upload(
-            image_file,
+            file_bytes,
             public_id=public_id,
-            folder=STORE_NAME.replace(' ', '_'),  # Organize by store name
             overwrite=True,
             resource_type="image",
-            format="jpg",
             transformation=[
-                {'width': 800, 'height': 800, 'crop': 'limit'},  # Max dimensions
-                {'quality': 'auto:good'},  # Automatic quality optimization
-                {'fetch_format': 'auto'}  # Automatic format selection (WebP, etc.)
+                {'width': 800, 'height': 800, 'crop': 'limit'},
+                {'quality': 'auto:good'},
+                {'fetch_format': 'auto'}
             ]
         )
         
         # Return the secure URL
         secure_url = result.get('secure_url')
-        print(f"✅ Uploaded to Cloudinary: {secure_url}")
-        return secure_url
+        if secure_url:
+            print(f"✅ Uploaded to Cloudinary: {secure_url}")
+            return secure_url
+        else:
+            print(f"❌ No URL returned from Cloudinary")
+            return None
     
     except Exception as e:
-        print(f"❌ Cloudinary upload error: {e}")
+        print(f"❌ Cloudinary upload error: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return None
 
 # ---------------- DELETE FROM CLOUDINARY ----------------
