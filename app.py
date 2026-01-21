@@ -347,8 +347,9 @@ h1, h2, h3, h4 {{
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);
+    background: #f8f9fa;
     min-height: 200px;
+    border-top: 1px solid #e9ecef;
 }}
 
 .product-title {{
