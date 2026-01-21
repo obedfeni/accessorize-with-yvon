@@ -308,95 +308,6 @@ h1, h2, h3, h4 {{
     border-bottom: 3px solid {PRIMARY_COLOR};
 }}
 
-/* Image Carousel */
-.image-carousel {{
-    position: relative;
-    width: 100%;
-    height: {PRODUCT_IMAGE_HEIGHT};
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-    border-bottom: 1px solid #e7e9ec;
-    overflow: hidden;
-}}
-
-.carousel-images {{
-    display: flex;
-    transition: transform 0.4s ease;
-    height: 100%;
-}}
-
-.carousel-image {{
-    min-width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 25px;
-}}
-
-.carousel-image img {{
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}}
-
-.carousel-dots {{
-    position: absolute;
-    bottom: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 10;
-}}
-
-.carousel-dot {{
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}}
-
-.carousel-dot.active {{
-    background: {PRIMARY_COLOR};
-    width: 24px;
-    border-radius: 4px;
-}}
-
-.carousel-arrow {{
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    color: #333;
-    z-index: 10;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-}}
-
-.carousel-arrow:hover {{
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}}
-
-.carousel-arrow.left {{
-    left: 10px;
-}}
-
-.carousel-arrow.right {{
-    right: 10px;
-}}
-
 /* Premium Product Cards */
 .product-card {{
     background: {CARD_BACKGROUND};
@@ -1040,10 +951,6 @@ else:
     cols = st.columns(PRODUCTS_PER_ROW)
     for idx, row in products_df.iterrows():
         with cols[idx % PRODUCTS_PER_ROW]:
-            badge_class = "badge-in-stock" if row["status"] == STATUS_IN_STOCK else "badge-out-stock"
-            badge_html = f"<div class='stock-badge {badge_class}'>{row['status']}</div>" if SHOW_STOCK_BADGE else ""
-            desc_html = f"<div class='product-description'>{row['description']}</div>" if ENABLE_PRODUCT_DESCRIPTION else ""
-            
             # Get all images
             images = [row["image1"], row["image2"], row["image3"]]
             images = [img for img in images if img]
@@ -1053,63 +960,73 @@ else:
             if carousel_key not in st.session_state:
                 st.session_state[carousel_key] = 0
             
-            # Image carousel HTML
-            carousel_html = f"""
+            # Start product card
+            st.markdown(f"""
             <div class='product-card'>
-                <div class='image-carousel' id='carousel_{row["id"]}'>
-                    {badge_html}
-                    <div class='carousel-images' style='transform: translateX(-{st.session_state[carousel_key] * 100}%)'>
-            """
+                <div class='product-image-wrapper' style='position:relative;'>
+            """, unsafe_allow_html=True)
             
-            for img_url in images:
-                carousel_html += f"""
-                    <div class='carousel-image'>
-                        <img src='{img_url}' alt='{row["name"]}'>
-                    </div>
-                """
+            # Show stock badge
+            if SHOW_STOCK_BADGE:
+                badge_class = "badge-in-stock" if row["status"] == STATUS_IN_STOCK else "badge-out-stock"
+                st.markdown(f"<div class='stock-badge {badge_class}'>{row['status']}</div>", unsafe_allow_html=True)
             
-            carousel_html += """
-                    </div>
-            """
-            
-            # Add navigation if multiple images
-            if len(images) > 1:
-                carousel_html += f"""
-                    <div class='carousel-dots'>
-                """
-                for i in range(len(images)):
-                    active_class = "active" if i == st.session_state[carousel_key] else ""
-                    carousel_html += f"<div class='carousel-dot {active_class}'></div>"
+            # Display current image
+            if images:
+                st.image(images[st.session_state[carousel_key]], use_container_width=True)
                 
-                carousel_html += """
-                    </div>
-                """
+                # Image counter and navigation
+                if len(images) > 1:
+                    col_left, col_mid, col_right = st.columns([1, 2, 1])
+                    with col_left:
+                        if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
+                            st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
+                            st.rerun()
+                    with col_mid:
+                        st.markdown(f"<div style='text-align:center; padding:8px 0; font-size:12px; color:#6b7280;'>{st.session_state[carousel_key] + 1} / {len(images)}</div>", unsafe_allow_html=True)
+                    with col_right:
+                        if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
+                            st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
+                            st.rerun()
             
-            carousel_html += f"""
-                </div>
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Product info
+            st.markdown(f"""
                 <div class='product-info'>
                     <div class='product-title'>{row['name']}</div>
-                    {desc_html}
+            """, unsafe_allow_html=True)
+            
+            if ENABLE_PRODUCT_DESCRIPTION and row.get('description'):
+                st.markdown(f"<div class='product-description'>{row['description']}</div>", unsafe_allow_html=True)
+            
+            st.markdown(f"""
                     <div class='product-price'>
                         <span class='price-currency'>{CURRENCY_SYMBOL}</span>{row['price']}
                     </div>
+            """, unsafe_allow_html=True)
+            
+            # Show variants if available
+            if row.get('variants'):
+                variants_dict = {}
+                try:
+                    variant_pairs = row['variants'].split(',')
+                    for pair in variant_pairs:
+                        if ':' in pair:
+                            size, price = pair.strip().split(':')
+                            variants_dict[size.strip()] = int(price.strip())
+                except:
+                    pass
+                
+                if variants_dict:
+                    st.markdown("<div style='margin-top:10px; font-size:13px; color:#6b7280; font-weight:600;'>Available Sizes:</div>", unsafe_allow_html=True)
+                    variant_options = " • ".join([f"{size} ({CURRENCY_SYMBOL}{price})" for size, price in variants_dict.items()])
+                    st.markdown(f"<div style='font-size:12px; color:#9ca3af; margin-bottom:10px;'>{variant_options}</div>", unsafe_allow_html=True)
+            
+            st.markdown("""
                 </div>
             </div>
-            """
-            
-            st.markdown(carousel_html, unsafe_allow_html=True)
-            
-            # Navigation buttons for carousel
-            if len(images) > 1:
-                col_left, col_mid, col_right = st.columns([1, 2, 1])
-                with col_left:
-                    if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
-                        st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
-                        st.rerun()
-                with col_right:
-                    if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
-                        st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
-                        st.rerun()
+            """, unsafe_allow_html=True)
             
             # Product button
             if row["status"] == STATUS_OUT_OF_STOCK:
@@ -1130,7 +1047,6 @@ if "selected" in st.session_state:
     
     # Parse variants
     variants_dict = {}
-    selected_variant = None
     
     if p.get('variants'):
         try:
@@ -1143,25 +1059,6 @@ if "selected" in st.session_state:
             pass
     
     with st.form("order"):
-        # Show variant selector if variants exist
-        if variants_dict:
-            st.markdown("### Select Size/Option")
-            variant_cols = st.columns(len(variants_dict))
-            
-            for idx, (size, price) in enumerate(variants_dict.items()):
-                with variant_cols[idx]:
-                    if st.form_submit_button(f"{size}\n{CURRENCY_SYMBOL} {price}", use_container_width=True):
-                        selected_variant = (size, price)
-            
-            if 'selected_variant_temp' not in st.session_state:
-                st.session_state.selected_variant_temp = list(variants_dict.items())[0]
-            
-            selected_variant = st.selectbox(
-                "Choose option:",
-                options=list(variants_dict.items()),
-                format_func=lambda x: f"{x[0]} - {CURRENCY_SYMBOL} {x[1]}"
-            )
-        
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input(f"{LABEL_CUSTOMER_NAME} *")
@@ -1173,13 +1070,27 @@ if "selected" in st.session_state:
                                  max_value=MAX_ORDER_QUANTITY, 
                                  value=MIN_ORDER_QUANTITY)
         
-        # Calculate price based on variant or base price
-        if selected_variant:
-            unit_price = selected_variant[1]
-            variant_text = selected_variant[0]
-        else:
-            unit_price = int(p["price"])
-            variant_text = "Standard"
+        # Show variant selector if variants exist
+        selected_variant_name = "Standard"
+        unit_price = int(p["price"])
+        
+        if variants_dict:
+            st.markdown("---")
+            st.markdown("### 🎯 Select Size/Option")
+            
+            # Create visual variant selector
+            variant_options = list(variants_dict.items())
+            
+            # Display as radio buttons with prices
+            selected_option = st.radio(
+                "Choose your size:",
+                options=range(len(variant_options)),
+                format_func=lambda x: f"{variant_options[x][0]} - {CURRENCY_SYMBOL}{variant_options[x][1]}",
+                horizontal=True
+            )
+            
+            selected_variant_name = variant_options[selected_option][0]
+            unit_price = variant_options[selected_option][1]
         
         total = unit_price * int(qty)
         
@@ -1187,7 +1098,8 @@ if "selected" in st.session_state:
         <div class='order-summary'>
             <strong>{HEADER_ORDER_SUMMARY}</strong><br>
             Item: {p['name']}<br>
-            Option: {variant_text}<br>
+            Size/Option: <strong>{selected_variant_name}</strong><br>
+            Unit Price: {CURRENCY_SYMBOL} {unit_price}<br>
             Quantity: {qty}<br>
             <strong style='font-size:20px; color:{PRICE_COLOR};'>Total: {CURRENCY_SYMBOL} {total}</strong>
         </div>
@@ -1201,7 +1113,7 @@ if "selected" in st.session_state:
             
             orders_sheet.append_row([
                 name, phone, location, p["name"],
-                qty, total, reference, timestamp, STATUS_PENDING, variant_text
+                qty, total, reference, timestamp, STATUS_PENDING, selected_variant_name
             ])
             
             # Notifications
@@ -1209,7 +1121,8 @@ if "selected" in st.session_state:
 🛒 <b>New Order!</b>
 
 📦 Product: {p['name']}
-🎯 Option: {variant_text}
+🎯 Size/Option: {selected_variant_name}
+💵 Unit Price: {CURRENCY_SYMBOL} {unit_price}
 👤 Customer: {name}
 📞 Phone: {phone}
 📍 Location: {location}
@@ -1226,7 +1139,8 @@ if "selected" in st.session_state:
                 <h2 style='color:#d97706;'>New Order Received!</h2>
                 <table style='border-collapse:collapse;width:100%;'>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Product:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{p['name']}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Option:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{variant_text}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Size/Option:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{selected_variant_name}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Unit Price:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{CURRENCY_SYMBOL} {unit_price}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Customer:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{name}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Phone:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{phone}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Location:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{location}</td></tr>
@@ -1250,6 +1164,7 @@ if "selected" in st.session_state:
             <div class='success-message'>
                 <h3 style='margin:0 0 12px 0;'>✅ {ORDER_SUCCESS_TITLE}{notif_text}</h3>
                 <p style='margin:0; font-size:15px;'>{ORDER_SUCCESS_MESSAGE}</p>
+                <p style='margin:8px 0 0 0;'>Size/Option: <strong>{selected_variant_name}</strong></p>
                 <p style='margin:15px 0 0 0;'><strong style='font-size:18px;'>Total: {CURRENCY_SYMBOL} {total}</strong></p>
             </div>
             """, unsafe_allow_html=True)
