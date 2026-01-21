@@ -583,14 +583,6 @@ h1, h2, h3, h4 {{
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }}
 
-@media (max-width: 768px) {{
-    .admin-container {{
-        padding: 20px 15px;
-        margin-bottom: 20px;
-        border-radius: 10px;
-    }}
-}}
-
 /* Stats Cards */
 .stat-card {{
     background: linear-gradient(135deg, {CARD_BACKGROUND} 0%, #fafafa 100%);
@@ -601,23 +593,9 @@ h1, h2, h3, h4 {{
     transition: all 0.3s ease;
 }}
 
-@media (max-width: 768px) {{
-    .stat-card {{
-        padding: 20px 15px;
-        border-radius: 10px;
-    }}
-}}
-
 .stat-card:hover {{
     transform: translateY(-4px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}}
-
-@media (max-width: 768px) {{
-    .stat-card:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }}
 }}
 
 .stat-number {{
@@ -629,26 +607,12 @@ h1, h2, h3, h4 {{
     margin-bottom: 8px;
 }}
 
-@media (max-width: 768px) {{
-    .stat-number {{
-        font-size: 28px;
-        margin-bottom: 6px;
-    }}
-}}
-
 .stat-label {{
     font-size: 14px;
     color: {TEXT_SECONDARY};
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-}}
-
-@media (max-width: 768px) {{
-    .stat-label {{
-        font-size: 12px;
-        letter-spacing: 0.3px;
-    }}
 }}
 
 /* Forms */
