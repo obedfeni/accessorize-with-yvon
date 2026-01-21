@@ -361,8 +361,7 @@ h1, h2, h3, h4 {{
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 25px;
-    border-bottom: 1px solid #e7e9ec;
+    padding: 20px;
     position: relative;
     overflow: hidden;
 }}
@@ -376,8 +375,8 @@ h1, h2, h3, h4 {{
 
 .stock-badge {{
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 12px;
+    right: 12px;
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 12px;
@@ -390,8 +389,8 @@ h1, h2, h3, h4 {{
 
 @media (max-width: 768px) {{
     .stock-badge {{
-        top: 10px;
-        right: 10px;
+        top: 8px;
+        right: 8px;
         padding: 4px 10px;
         font-size: 10px;
         letter-spacing: 0.3px;
@@ -413,6 +412,8 @@ h1, h2, h3, h4 {{
     flex: 1;
     display: flex;
     flex-direction: column;
+    background: white;
+    border-top: 1px solid #e5e7eb;
 }}
 
 @media (max-width: 768px) {{
@@ -1122,11 +1123,11 @@ else:
             if carousel_key not in st.session_state:
                 st.session_state[carousel_key] = 0
             
-            # Start product card
-            st.markdown(f"""
-            <div class='product-card'>
-                <div class='product-image-wrapper' style='position:relative;'>
-            """, unsafe_allow_html=True)
+            # Start product card with proper structure
+            st.markdown("<div class='product-card'>", unsafe_allow_html=True)
+            
+            # Image wrapper with badge
+            st.markdown("<div class='product-image-wrapper'>", unsafe_allow_html=True)
             
             # Show stock badge
             if SHOW_STOCK_BADGE:
@@ -1136,29 +1137,29 @@ else:
             # Display current image
             if images:
                 st.image(images[st.session_state[carousel_key]], use_container_width=True)
-                
-                # Image counter and navigation
-                if len(images) > 1:
-                    col_left, col_mid, col_right = st.columns([1, 2, 1])
-                    with col_left:
-                        if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
-                            st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
-                            st.rerun()
-                    with col_mid:
-                        st.markdown(f"<div style='text-align:center; padding:8px 0; font-size:12px; color:#6b7280;'>{st.session_state[carousel_key] + 1} / {len(images)}</div>", unsafe_allow_html=True)
-                    with col_right:
-                        if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
-                            st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
-                            st.rerun()
             
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Product info - Build complete HTML string
+            # Image navigation (outside image wrapper to avoid padding issues)
+            if len(images) > 1:
+                col_left, col_mid, col_right = st.columns([1, 2, 1])
+                with col_left:
+                    if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
+                        st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
+                        st.rerun()
+                with col_mid:
+                    st.markdown(f"<div style='text-align:center; padding:5px 0; font-size:11px; color:#9ca3af; font-weight:500;'>{st.session_state[carousel_key] + 1} / {len(images)}</div>", unsafe_allow_html=True)
+                with col_right:
+                    if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
+                        st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
+                        st.rerun()
+            
+            # Product info section - all as clean HTML
             desc_html = ""
             if ENABLE_PRODUCT_DESCRIPTION and row.get('description'):
                 desc_html = f"<div class='product-description'>{row['description']}</div>"
             
-            # Check for variants
+            # Build variants HTML
             variants_html = ""
             if row.get('variants'):
                 variants_dict = {}
@@ -1172,16 +1173,20 @@ else:
                     pass
                 
                 if variants_dict:
-                    variant_options = " • ".join([f"{size} ({CURRENCY_SYMBOL}{price})" for size, price in variants_dict.items()])
+                    variant_items = []
+                    for size, price in variants_dict.items():
+                        variant_items.append(f"{size} ({CURRENCY_SYMBOL}{price})")
+                    variant_text = " • ".join(variant_items)
+                    
                     variants_html = f"""
-                    <div style='margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0;'>
-                        <div style='font-size:11px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;'>Available Options</div>
-                        <div style='font-size:12px; color:#9ca3af;'>{variant_options}</div>
+                    <div style='margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;'>
+                        <div style='font-size:10px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;'>Available Options</div>
+                        <div style='font-size:12px; color:#374151; font-weight:500; line-height:1.5;'>{variant_text}</div>
                     </div>
                     """
             
-            # Render complete product info in one block
-            product_info_html = f"""
+            # Complete product info HTML in one block
+            st.markdown(f"""
                 <div class='product-info'>
                     <div class='product-title'>{row['name']}</div>
                     {desc_html}
@@ -1191,9 +1196,7 @@ else:
                     {variants_html}
                 </div>
             </div>
-            """
-            
-            st.markdown(product_info_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             # Product button
             if row["status"] == STATUS_OUT_OF_STOCK:
