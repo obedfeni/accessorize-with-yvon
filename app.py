@@ -1,8 +1,4 @@
-# Complete E-Commerce Store Code (app.py)
 
-Copy everything below and paste it into your `app.py` file:
-
-```python
 # ==========================================
 # E-COMMERCE STORE TEMPLATE
 # Powered by Streamlit + Google Sheets + Cloudinary
