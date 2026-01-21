@@ -63,7 +63,6 @@ def upload_to_cloudinary(image_file, filename):
         image_file.seek(0)
         
         # Create a clean public_id
-        # Remove special characters and keep it simple
         clean_filename = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
         clean_filename = ''.join(c for c in clean_filename if c.isalnum() or c in ['_', '-'])
         
@@ -103,13 +102,10 @@ def delete_from_cloudinary(image_url):
     Delete image from Cloudinary using its URL
     """
     try:
-        # Extract public_id from URL
-        # Example: https://res.cloudinary.com/demo/image/upload/v1234/folder/image.jpg
         parts = image_url.split('/')
         if 'cloudinary.com' in image_url:
-            # Find the public_id (everything after /upload/vXXXX/)
             upload_idx = parts.index('upload')
-            public_id_parts = parts[upload_idx + 2:]  # Skip version number
+            public_id_parts = parts[upload_idx + 2:]
             public_id = '/'.join(public_id_parts).replace('.jpg', '').replace('.png', '').replace('.jpeg', '')
             
             result = cloudinary.uploader.destroy(public_id)
@@ -312,6 +308,95 @@ h1, h2, h3, h4 {{
     border-bottom: 3px solid {PRIMARY_COLOR};
 }}
 
+/* Image Carousel */
+.image-carousel {{
+    position: relative;
+    width: 100%;
+    height: {PRODUCT_IMAGE_HEIGHT};
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    border-bottom: 1px solid #e7e9ec;
+    overflow: hidden;
+}}
+
+.carousel-images {{
+    display: flex;
+    transition: transform 0.4s ease;
+    height: 100%;
+}}
+
+.carousel-image {{
+    min-width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+}}
+
+.carousel-image img {{
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}}
+
+.carousel-dots {{
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}}
+
+.carousel-dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}}
+
+.carousel-dot.active {{
+    background: {PRIMARY_COLOR};
+    width: 24px;
+    border-radius: 4px;
+}}
+
+.carousel-arrow {{
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #333;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+}}
+
+.carousel-arrow:hover {{
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}}
+
+.carousel-arrow.left {{
+    left: 10px;
+}}
+
+.carousel-arrow.right {{
+    right: 10px;
+}}
+
 /* Premium Product Cards */
 .product-card {{
     background: {CARD_BACKGROUND};
@@ -331,30 +416,6 @@ h1, h2, h3, h4 {{
     border-color: {PRIMARY_COLOR};
 }}
 
-.product-image-wrapper {{
-    width: 100%;
-    height: {PRODUCT_IMAGE_HEIGHT};
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 25px;
-    border-bottom: 1px solid #e7e9ec;
-    position: relative;
-    overflow: hidden;
-}}
-
-.product-image-wrapper img {{
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transition: transform 0.3s ease;
-}}
-
-.product-card:hover .product-image-wrapper img {{
-    transform: scale(1.05);
-}}
-
 .stock-badge {{
     position: absolute;
     top: 15px;
@@ -366,6 +427,7 @@ h1, h2, h3, h4 {{
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 5;
 }}
 
 .badge-in-stock {{
@@ -423,6 +485,38 @@ h1, h2, h3, h4 {{
     font-size: 16px;
     font-weight: 600;
     color: {TEXT_SECONDARY};
+}}
+
+.variant-selector {{
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+}}
+
+.variant-option {{
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 5px;
+    cursor: pointer;
+    display: inline-block;
+    transition: all 0.3s ease;
+    font-size: 13px;
+    font-weight: 600;
+}}
+
+.variant-option:hover {{
+    border-color: {PRIMARY_COLOR};
+    background: #fef3c7;
+}}
+
+.variant-option.selected {{
+    border-color: {PRIMARY_COLOR};
+    background: {PRIMARY_COLOR};
+    color: white;
 }}
 
 /* Premium Buttons */
@@ -645,7 +739,7 @@ def load_products():
     records = products_sheet.get_all_records(expected_headers=[
         "id","name","price","stock",
         "image1","image2","image3",
-        "description","status"
+        "description","status","variants"
     ])
     rows = []
     for i, r in enumerate(records, start=2):
@@ -748,7 +842,7 @@ if st.session_state.admin_logged:
     orders_df = pd.DataFrame(
         orders_sheet.get_all_records(expected_headers=[
             "name","phone","location","items",
-            "qty","amount","reference","timestamp","status"
+            "qty","amount","reference","timestamp","status","variant"
         ])
     )
     
@@ -784,13 +878,17 @@ if st.session_state.admin_logged:
     # ADD PRODUCT
     st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
     st.markdown("### ➕ Add New Product")
+    
+    st.info("💡 **Variants:** Add different sizes/options with different prices (e.g., Small:100, Medium:150, Large:200). Leave empty if product has single price.")
+    
     with st.form("add_product"):
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input("Product Name *")
-            price = st.number_input(f"Price ({CURRENCY}) *", min_value=0)
+            price = st.number_input(f"Base Price ({CURRENCY}) *", min_value=0, help="Default price if no variants")
         with col2:
             stock = st.number_input("Stock Quantity *", min_value=0)
+            variants_input = st.text_input("Variants (Optional)", placeholder="Small:100, Medium:150, Large:200", help="Format: Size:Price, Size:Price")
             
         desc = st.text_area("Product Description")
         images = st.file_uploader(
@@ -805,10 +903,7 @@ if st.session_state.admin_logged:
             
             with st.spinner("☁️ Uploading images to Cloudinary..."):
                 for idx, img in enumerate(images[:3], 1):
-                    # Create unique filename
                     filename = f"{name.replace(' ', '_')}_{idx}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
-                    
-                    # Upload to Cloudinary
                     url = upload_to_cloudinary(img, filename)
                     
                     if url:
@@ -818,19 +913,17 @@ if st.session_state.admin_logged:
                         st.error(f"❌ Failed to upload image {idx}")
                         st.stop()
             
-            # Pad with empty strings if less than 3 images
             while len(image_urls) < 3:
                 image_urls.append("")
             
-            # Generate new product ID
             new_id = int(products_df["id"].max()) + 1 if not products_df.empty else 1
             status = STATUS_IN_STOCK if stock > 0 else STATUS_OUT_OF_STOCK
             
-            # Save to Google Sheets (just URLs now - no size limit!)
+            # Store variants as JSON string
             products_sheet.append_row([
                 new_id, name, price, stock,
                 image_urls[0], image_urls[1], image_urls[2],
-                desc, status
+                desc, status, variants_input
             ])
             
             st.success("✅ Product added successfully!")
@@ -847,18 +940,27 @@ if st.session_state.admin_logged:
         cols = st.columns(3)
         for idx, row in products_df.iterrows():
             with cols[idx % 3]:
-                st.image(row["image1"], use_column_width=True)
+                # Show all images
+                images_to_show = [row["image1"], row["image2"], row["image3"]]
+                images_to_show = [img for img in images_to_show if img]
+                
+                if images_to_show:
+                    st.image(images_to_show[0], use_column_width=True)
+                    if len(images_to_show) > 1:
+                        st.caption(f"📸 {len(images_to_show)} images")
+                
                 st.markdown(f"**{row['name']}**")
                 st.markdown(f"Stock: {row['stock']} | {CURRENCY_SYMBOL} {row['price']}")
                 
+                if row.get('variants'):
+                    st.caption(f"🎯 Variants: {row['variants']}")
+                
                 if st.button(f"Delete", key=f"del_{row['id']}", use_container_width=True):
-                    # Delete images from Cloudinary
                     for img_col in ['image1', 'image2', 'image3']:
                         img_url = row.get(img_col, '')
                         if img_url and 'cloudinary.com' in img_url:
                             delete_from_cloudinary(img_url)
                     
-                    # Delete from Google Sheets
                     products_sheet.delete_rows(row["_row"])
                     st.success("Product and images deleted!")
                     st.rerun()
@@ -939,15 +1041,51 @@ else:
     for idx, row in products_df.iterrows():
         with cols[idx % PRODUCTS_PER_ROW]:
             badge_class = "badge-in-stock" if row["status"] == STATUS_IN_STOCK else "badge-out-stock"
-            
             badge_html = f"<div class='stock-badge {badge_class}'>{row['status']}</div>" if SHOW_STOCK_BADGE else ""
             desc_html = f"<div class='product-description'>{row['description']}</div>" if ENABLE_PRODUCT_DESCRIPTION else ""
             
-            st.markdown(f"""
+            # Get all images
+            images = [row["image1"], row["image2"], row["image3"]]
+            images = [img for img in images if img]
+            
+            # Create unique key for this product's carousel
+            carousel_key = f"carousel_{row['id']}"
+            if carousel_key not in st.session_state:
+                st.session_state[carousel_key] = 0
+            
+            # Image carousel HTML
+            carousel_html = f"""
             <div class='product-card'>
-                <div class='product-image-wrapper'>
-                    <img src='{row["image1"]}' alt='{row["name"]}'>
+                <div class='image-carousel' id='carousel_{row["id"]}'>
                     {badge_html}
+                    <div class='carousel-images' style='transform: translateX(-{st.session_state[carousel_key] * 100}%)'>
+            """
+            
+            for img_url in images:
+                carousel_html += f"""
+                    <div class='carousel-image'>
+                        <img src='{img_url}' alt='{row["name"]}'>
+                    </div>
+                """
+            
+            carousel_html += """
+                    </div>
+            """
+            
+            # Add navigation if multiple images
+            if len(images) > 1:
+                carousel_html += f"""
+                    <div class='carousel-dots'>
+                """
+                for i in range(len(images)):
+                    active_class = "active" if i == st.session_state[carousel_key] else ""
+                    carousel_html += f"<div class='carousel-dot {active_class}'></div>"
+                
+                carousel_html += """
+                    </div>
+                """
+            
+            carousel_html += f"""
                 </div>
                 <div class='product-info'>
                     <div class='product-title'>{row['name']}</div>
@@ -957,8 +1095,23 @@ else:
                     </div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """
             
+            st.markdown(carousel_html, unsafe_allow_html=True)
+            
+            # Navigation buttons for carousel
+            if len(images) > 1:
+                col_left, col_mid, col_right = st.columns([1, 2, 1])
+                with col_left:
+                    if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
+                        st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
+                        st.rerun()
+                with col_right:
+                    if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
+                        st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
+                        st.rerun()
+            
+            # Product button
             if row["status"] == STATUS_OUT_OF_STOCK:
                 st.button(BUTTON_OUT_OF_STOCK, key=f"out_{row['id']}", disabled=True, use_container_width=True)
             else:
@@ -975,7 +1128,40 @@ if "selected" in st.session_state:
     st.markdown(f"### {HEADER_CHECKOUT}")
     st.markdown(f"**Product:** {p['name']}")
     
+    # Parse variants
+    variants_dict = {}
+    selected_variant = None
+    
+    if p.get('variants'):
+        try:
+            variant_pairs = p['variants'].split(',')
+            for pair in variant_pairs:
+                if ':' in pair:
+                    size, price = pair.strip().split(':')
+                    variants_dict[size.strip()] = int(price.strip())
+        except:
+            pass
+    
     with st.form("order"):
+        # Show variant selector if variants exist
+        if variants_dict:
+            st.markdown("### Select Size/Option")
+            variant_cols = st.columns(len(variants_dict))
+            
+            for idx, (size, price) in enumerate(variants_dict.items()):
+                with variant_cols[idx]:
+                    if st.form_submit_button(f"{size}\n{CURRENCY_SYMBOL} {price}", use_container_width=True):
+                        selected_variant = (size, price)
+            
+            if 'selected_variant_temp' not in st.session_state:
+                st.session_state.selected_variant_temp = list(variants_dict.items())[0]
+            
+            selected_variant = st.selectbox(
+                "Choose option:",
+                options=list(variants_dict.items()),
+                format_func=lambda x: f"{x[0]} - {CURRENCY_SYMBOL} {x[1]}"
+            )
+        
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input(f"{LABEL_CUSTOMER_NAME} *")
@@ -987,12 +1173,21 @@ if "selected" in st.session_state:
                                  max_value=MAX_ORDER_QUANTITY, 
                                  value=MIN_ORDER_QUANTITY)
         
-        total = int(p["price"]) * int(qty)
+        # Calculate price based on variant or base price
+        if selected_variant:
+            unit_price = selected_variant[1]
+            variant_text = selected_variant[0]
+        else:
+            unit_price = int(p["price"])
+            variant_text = "Standard"
+        
+        total = unit_price * int(qty)
         
         st.markdown(f"""
         <div class='order-summary'>
             <strong>{HEADER_ORDER_SUMMARY}</strong><br>
             Item: {p['name']}<br>
+            Option: {variant_text}<br>
             Quantity: {qty}<br>
             <strong style='font-size:20px; color:{PRICE_COLOR};'>Total: {CURRENCY_SYMBOL} {total}</strong>
         </div>
@@ -1006,15 +1201,23 @@ if "selected" in st.session_state:
             
             orders_sheet.append_row([
                 name, phone, location, p["name"],
-                qty, total, reference, timestamp, STATUS_PENDING
+                qty, total, reference, timestamp, STATUS_PENDING, variant_text
             ])
             
             # Notifications
-            telegram_msg = TELEGRAM_NOTIFICATION_TEMPLATE.format(
-                product_name=p['name'], customer_name=name, phone=phone,
-                location=location, quantity=qty, currency=CURRENCY_SYMBOL,
-                total=total, reference=reference, timestamp=timestamp
-            )
+            telegram_msg = f"""
+🛒 <b>New Order!</b>
+
+📦 Product: {p['name']}
+🎯 Option: {variant_text}
+👤 Customer: {name}
+📞 Phone: {phone}
+📍 Location: {location}
+🔢 Quantity: {qty}
+💰 Total: {CURRENCY_SYMBOL} {total}
+🔖 Reference: {reference}
+📅 Time: {timestamp}
+            """
             telegram_sent = send_telegram_notification(telegram_msg)
             
             email_subject = f"🛒 New Order: {reference}"
@@ -1023,6 +1226,7 @@ if "selected" in st.session_state:
                 <h2 style='color:#d97706;'>New Order Received!</h2>
                 <table style='border-collapse:collapse;width:100%;'>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Product:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{p['name']}</td></tr>
+                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Option:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{variant_text}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Customer:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{name}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Phone:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{phone}</td></tr>
                     <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Location:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{location}</td></tr>
