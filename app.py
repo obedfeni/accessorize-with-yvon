@@ -294,8 +294,7 @@ h1, h2, h3, h4 {{
 
 @media (max-width: 768px) {{
     .content-wrapper {{
-        padding: 20px 12px;
-        max-width: 100%;
+        padding: 25px 15px;
     }}
 }}
 
@@ -309,15 +308,6 @@ h1, h2, h3, h4 {{
     border-bottom: 3px solid {PRIMARY_COLOR};
 }}
 
-@media (max-width: 768px) {{
-    .section-header {{
-        font-size: 22px;
-        margin: 25px 0 18px 0;
-        padding-bottom: 10px;
-        border-bottom: 2px solid {PRIMARY_COLOR};
-    }}
-}}
-
 /* Premium Product Cards */
 .product-card {{
     background: {CARD_BACKGROUND};
@@ -329,49 +319,12 @@ h1, h2, h3, h4 {{
     display: flex;
     flex-direction: column;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    max-width: 450px;
-    margin: 0 auto;
-}}
-
-@media (max-width: 768px) {{
-    .product-card {{
-        max-width: 100%;
-        border-radius: 10px;
-        margin-bottom: 15px;
-    }}
 }}
 
 .product-card:hover {{
     transform: translateY(-4px);
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
     border-color: {PRIMARY_COLOR};
-}}
-
-@media (max-width: 768px) {{
-    .product-card:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    }}
-}}
-
-.product-image-wrapper {{
-    width: 100%;
-    height: {PRODUCT_IMAGE_HEIGHT};
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 25px;
-    border-bottom: 1px solid #e7e9ec;
-    position: relative;
-    overflow: hidden;
-}}
-
-@media (max-width: 768px) {{
-    .product-image-wrapper {{
-        height: 220px;
-        padding: 15px;
-    }}
 }}
 
 .stock-badge {{
@@ -386,16 +339,6 @@ h1, h2, h3, h4 {{
     letter-spacing: 0.5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 5;
-}}
-
-@media (max-width: 768px) {{
-    .stock-badge {{
-        top: 10px;
-        right: 10px;
-        padding: 4px 10px;
-        font-size: 10px;
-        letter-spacing: 0.3px;
-    }}
 }}
 
 .badge-in-stock {{
@@ -415,12 +358,6 @@ h1, h2, h3, h4 {{
     flex-direction: column;
 }}
 
-@media (max-width: 768px) {{
-    .product-info {{
-        padding: 15px;
-    }}
-}}
-
 .product-title {{
     font-size: 17px;
     font-weight: 600;
@@ -431,14 +368,6 @@ h1, h2, h3, h4 {{
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}}
-
-@media (max-width: 768px) {{
-    .product-title {{
-        font-size: 15px;
-        margin-bottom: 8px;
-        line-height: 1.3;
-    }}
 }}
 
 .product-description {{
@@ -453,14 +382,6 @@ h1, h2, h3, h4 {{
     overflow: hidden;
 }}
 
-@media (max-width: 768px) {{
-    .product-description {{
-        font-size: 12px;
-        margin-bottom: 10px;
-        line-height: 1.5;
-    }}
-}}
-
 .product-price {{
     font-size: 26px;
     font-weight: 800;
@@ -471,23 +392,10 @@ h1, h2, h3, h4 {{
     gap: 5px;
 }}
 
-@media (max-width: 768px) {{
-    .product-price {{
-        font-size: 22px;
-        margin-bottom: 12px;
-    }}
-}}
-
 .price-currency {{
     font-size: 16px;
     font-weight: 600;
     color: {TEXT_SECONDARY};
-}}
-
-@media (max-width: 768px) {{
-    .price-currency {{
-        font-size: 14px;
-    }}
 }}
 
 .variant-selector {{
@@ -538,25 +446,9 @@ h1, h2, h3, h4 {{
     letter-spacing: 0.5px;
 }}
 
-@media (max-width: 768px) {{
-    .stButton>button {{
-        padding: 11px 18px;
-        font-size: 13px;
-        border-radius: 8px;
-        letter-spacing: 0.3px;
-    }}
-}}
-
 .stButton>button:hover {{
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-}}
-
-@media (max-width: 768px) {{
-    .stButton>button:hover {{
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }}
 }}
 
 .stButton>button:disabled {{
@@ -643,30 +535,12 @@ h1, h2, h3, h4 {{
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }}
 
-@media (max-width: 768px) {{
-    .order-container {{
-        padding: 20px 15px;
-        margin: 25px 0;
-        border-radius: 12px;
-        border: 1px solid #e7e9ec;
-    }}
-}}
-
 .order-summary {{
     background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
     padding: 25px;
     border-radius: 12px;
     margin-top: 20px;
     border: 1px solid #e5e7eb;
-}}
-
-@media (max-width: 768px) {{
-    .order-summary {{
-        padding: 18px;
-        border-radius: 10px;
-        margin-top: 15px;
-        font-size: 14px;
-    }}
 }}
 
 /* Success Message */
