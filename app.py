@@ -1,36 +1,45 @@
+# ==========================================
+# ACCESSORIZE WITH YVON - PROFESSIONAL E-COMMERCE
 
-# ==========================================
-# E-COMMERCE STORE TEMPLATE
-# Powered by Streamlit + Google Sheets + Cloudinary
-# ==========================================
-# To customize: Edit config.py file!
 # ==========================================
 
 import streamlit as st
 import gspread
 import pandas as pd
-import os, json, base64
-from datetime import datetime
-from oauth2client.service_account import ServiceAccountCredentials
+import os
+import json
 import random
 import requests
 import smtplib
+import threading
+import time
+from datetime import datetime
+from oauth2client.service_account import ServiceAccountCredentials
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from PIL import Image
-import io
+from urllib.parse import quote
 import cloudinary
 import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
 
 # Import configuration
-try:
-    from config import *
-except ImportError:
-    st.error("⚠️ config.py file not found! Please ensure config.py is in the same folder as app.py")
-    st.stop()
+from config import *
 
-# ---------------- CLOUDINARY SETUP ----------------
+# ==========================================
+# INITIALIZATION - Must be first
+# ==========================================
+st.set_page_config(
+    page_title=f"{STORE_NAME} | {STORE_TAGLINE}",
+    page_icon="💎",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': f"{STORE_NAME} - {STORE_DESCRIPTION}"
+    }
+)
+
+# Cloudinary Setup
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
@@ -38,634 +47,989 @@ cloudinary.config(
     secure=True
 )
 
-# ---------------- REFERENCE GENERATOR ----------------
-def generate_reference(product_name, location):
-    product_code = product_name[:3].upper()
-    location_code = location[:3].upper()
-    min_rand = 10 ** (REFERENCE_LENGTH - 1)
-    max_rand = (10 ** REFERENCE_LENGTH) - 1
-    rand = random.randint(min_rand, max_rand)
-    return f"{REFERENCE_PREFIX}-{product_code}-{location_code}-{rand}"
+# ==========================================
+# UTILITY FUNCTIONS
+# ==========================================
 
-# ---------------- CLOUDINARY IMAGE UPLOAD ----------------
-def upload_to_cloudinary(image_file, filename):
-    """
-    Upload image to Cloudinary with automatic optimization
-    Returns the secure URL or None if failed
-    """
+def generate_reference(product_name, location):
+    """Generate unique order reference"""
+    product_code = product_name[:3].upper() if len(product_name) >= 3 else product_name.upper()
+    location_code = location[:3].upper() if len(location) >= 3 else location.upper()
+    random_num = random.randint(10 ** (REFERENCE_LENGTH - 1), (10 ** REFERENCE_LENGTH) - 1)
+    return f"{REFERENCE_PREFIX}-{product_code}-{location_code}-{random_num}"
+
+def upload_to_cloudinary(file, filename):
+    """Upload image with optimization"""
     try:
-        image_file.seek(0)
-        file_bytes = image_file.read()
-        image_file.seek(0)
-        
-        clean_filename = filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '')
-        clean_filename = ''.join(c for c in clean_filename if c.isalnum() or c in ['_', '-'])
-        
-        public_id = f"accessorize_yvon/{clean_filename}"
+        file.seek(0)
+        clean_filename = ''.join(c for c in filename.replace('.jpg', '').replace('.jpeg', '').replace('.png', '') if c.isalnum() or c in ['_', '-'])
+        public_id = f"accessorize_yvon/{clean_filename}_{int(time.time())}"
         
         result = cloudinary.uploader.upload(
-            file_bytes,
+            file,
             public_id=public_id,
             overwrite=True,
             resource_type="image",
             transformation=[
                 {'width': 800, 'height': 800, 'crop': 'limit'},
-                {'quality': 'auto:good'},
+                {'quality': PRODUCT_IMAGE_QUALITY},
                 {'fetch_format': 'auto'}
             ]
         )
-        
-        secure_url = result.get('secure_url')
-        if secure_url:
-            print(f"✅ Uploaded to Cloudinary: {secure_url}")
-            return secure_url
-        else:
-            print(f"❌ No URL returned from Cloudinary")
-            return None
-    
+        return result.get('secure_url')
     except Exception as e:
-        print(f"❌ Cloudinary upload error: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
+        print(f"Upload error: {e}")
         return None
 
-# ---------------- DELETE FROM CLOUDINARY ----------------
 def delete_from_cloudinary(image_url):
-    """Delete image from Cloudinary using its URL"""
+    """Delete image from Cloudinary"""
     try:
-        parts = image_url.split('/')
         if 'cloudinary.com' in image_url:
+            parts = image_url.split('/')
             upload_idx = parts.index('upload')
-            public_id_parts = parts[upload_idx + 2:]
-            public_id = '/'.join(public_id_parts).replace('.jpg', '').replace('.png', '').replace('.jpeg', '')
-            
+            public_id = '/'.join(parts[upload_idx + 2:]).rsplit('.', 1)[0]
             result = cloudinary.uploader.destroy(public_id)
-            print(f"🗑️ Deleted from Cloudinary: {public_id}")
             return result.get('result') == 'ok'
     except Exception as e:
-        print(f"❌ Cloudinary delete error: {e}")
+        print(f"Delete error: {e}")
     return False
 
-# ---------------- EMAIL NOTIFICATION ----------------
-def send_email_notification(subject, message):
-    """Send email notification using Gmail SMTP"""
-    admin_email = os.environ.get("ADMIN_EMAIL")
-    email_password = os.environ.get("EMAIL_APP_PASSWORD")
-    
-    if not admin_email or not email_password:
-        return False
-    
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = admin_email
-        msg['To'] = admin_email
-        msg['Subject'] = subject
+# ==========================================
+# ASYNC NOTIFICATIONS (Non-blocking)
+# ==========================================
+
+def send_notifications_async(product_name, variant, customer_name, phone, location, qty, total, reference, timestamp):
+    """Send notifications in background thread"""
+    def _send():
+        # Telegram
+        try:
+            token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+            if token and chat_id:
+                message = TELEGRAM_TEMPLATE.format(
+                    product_name=product_name,
+                    variant=variant,
+                    customer_name=customer_name,
+                    phone=phone,
+                    location=location,
+                    quantity=qty,
+                    currency=CURRENCY_SYMBOL,
+                    total=total,
+                    reference=reference,
+                    timestamp=timestamp
+                )
+                requests.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    data={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
+                    timeout=5
+                )
+        except:
+            pass
         
-        msg.attach(MIMEText(message, 'html'))
-        
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(admin_email, email_password)
-        server.send_message(msg)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"Email error: {e}")
-        return False
-
-# ---------------- TELEGRAM NOTIFICATION ----------------
-def send_telegram_notification(message):
-    telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+        # Email
+        try:
+            admin_email = os.environ.get("ADMIN_EMAIL")
+            password = os.environ.get("EMAIL_APP_PASSWORD")
+            if admin_email and password:
+                msg = MIMEMultipart('alternative')
+                msg['From'] = admin_email
+                msg['To'] = admin_email
+                msg['Subject'] = f"🛍️ New Order: {reference}"
+                
+                html = f"""
+                <html>
+                <body style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>
+                    <div style='background:linear-gradient(135deg,{PRIMARY_COLOR},{PRIMARY_LIGHT});color:white;padding:30px;text-align:center;border-radius:15px 15px 0 0;'>
+                        <h1>🛍️ New Order!</h1>
+                    </div>
+                    <div style='background:#fff5f5;padding:30px;border:1px solid {BORDER_COLOR};'>
+                        <p><strong>Product:</strong> {product_name}</p>
+                        <p><strong>Variant:</strong> {variant}</p>
+                        <p><strong>Customer:</strong> {customer_name}</p>
+                        <p><strong>Phone:</strong> {phone}</p>
+                        <p><strong>Location:</strong> {location}</p>
+                        <p><strong>Quantity:</strong> {qty}</p>
+                        <p><strong>Total:</strong> {CURRENCY_SYMBOL} {total}</p>
+                        <p><strong>Reference:</strong> {reference}</p>
+                    </div>
+                </body>
+                </html>
+                """
+                msg.attach(MIMEText(html, 'html'))
+                
+                server = smtplib.SMTP('smtp.gmail.com', 587)
+                server.starttls()
+                server.login(admin_email, password)
+                server.send_message(msg)
+                server.quit()
+        except:
+            pass
     
-    if not telegram_bot_token or not telegram_chat_id:
-        return False
+    thread = threading.Thread(target=_send, daemon=True)
+    thread.start()
+
+# ==========================================
+# SEO & META TAGS
+# ==========================================
+
+st.markdown(f"""
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+    <link rel="dns-prefetch" href="https://res.cloudinary.com">
     
-    try:
-        url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
-        data = {
-            "chat_id": telegram_chat_id,
-            "text": message,
-            "parse_mode": "HTML"
-        }
-        response = requests.post(url, data=data, timeout=10)
-        return response.status_code == 200
-    except Exception as e:
-        print(f"Telegram error: {e}")
-        return False
+    <!-- Mobile Optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="{PRIMARY_COLOR}">
+    
+    <!-- SEO -->
+    <meta name="description" content="{STORE_DESCRIPTION}. Shop high-quality jewelry, body splashes, hair accessories & crocheted fashion in Ghana. Fast delivery in Accra & nationwide.">
+    <meta name="keywords" content="jewelry ghana, hair accessories accra, body splash ghana, crocheted fashion, handmade jewelry, beauty products ghana, accessories shop">
+    <meta name="author" content="{STORE_NAME}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://accessorizewithyvon.com">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{STORE_NAME}">
+    <meta property="og:description" content="{STORE_TAGLINE}. {STORE_DESCRIPTION}">
+    <meta property="og:site_name" content="{STORE_NAME}">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {{
+      "@context": "https://schema.org",
+      "@type": "Store",
+      "name": "{STORE_NAME}",
+      "description": "{STORE_TAGLINE}",
+      "address": {{
+        "@type": "PostalAddress",
+        "addressLocality": "{LOCATION}",
+        "addressCountry": "GH"
+      }},
+      "telephone": "+233{PHONE_NUMBER[1:]}",
+      "priceRange": "{CURRENCY_SYMBOL}50-500"
+    }}
+    </script>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
+""", unsafe_allow_html=True)
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(
-    page_title=STORE_NAME,
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+# ==========================================
+# SESSION STATE
+# ==========================================
 
-# ---------------- SESSION STATE ----------------
-if "admin_logged" not in st.session_state:
-    st.session_state.admin_logged = False
+for key in ["admin_logged", "show_admin_login", "selected_product", "cart"]:
+    if key not in st.session_state:
+        st.session_state[key] = False if key != "cart" else []
 
-if "show_admin_login" not in st.session_state:
-    st.session_state.show_admin_login = False
-
-# ---------------- CHECK FOR ADMIN ROUTE ----------------
-query_params = st.query_params
-if "page" in query_params and query_params["page"] == "admin":
+if "page" in st.query_params and st.query_params["page"] == "admin":
     st.session_state.show_admin_login = True
 
-# ---------------- HIDE STREAMLIT UI ----------------
+# ==========================================
+# HIDE STREAMLIT BRANDING
+# ==========================================
+
 st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stDeployButton {display:none;}
+    #MainMenu, footer, header, .stDeployButton,
+    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_,
+    [data-testid="stToolbar"], [data-testid="stDecoration"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+    .block-container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        max-width: 100% !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- PROFESSIONAL THEME (Mobile Optimized) ----------------
-logo_border_radius = "50%" if LOGO_SHAPE == "circle" else "12px"
+# ==========================================
+# PROFESSIONAL THEME - MOBILE FIRST
+# ==========================================
+
+logo_border_radius = "50%" if LOGO_SHAPE == "circle" else "16px"
 
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-html, body, .stApp {{ 
-    background: {BACKGROUND_COLOR};
-    color: {TEXT_PRIMARY};
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}}
-
-h1, h2, h3, h4 {{ 
-    color: {TEXT_PRIMARY};
-    font-weight: 600;
-}}
-
-/* Professional Navigation Bar */
-.top-nav {{
-    background: {NAV_BACKGROUND};
-    padding: 20px 40px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    margin-bottom: 0;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}}
-
-.logo-container {{
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex: 1;
-}}
-
-.logo-icon {{
-    width: 65px;
-    height: 65px;
-    background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {BUTTON_COLOR} 100%);
-    border-radius: {logo_border_radius};
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 28px;
-    flex-shrink: 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}}
-
-.logo-text-container {{
-    flex: 1;
-}}
-
-.logo-text {{
-    font-size: 26px;
-    font-weight: 800;
-    color: {NAV_TEXT_COLOR};
-    margin: 0;
-    line-height: 1.2;
-    letter-spacing: -0.5px;
-}}
-
-.nav-tagline {{
-    font-size: 13px;
-    color: {TEXT_SECONDARY};
-    margin: 4px 0 0 0;
-    font-weight: 500;
-}}
-
-/* Mobile responsive */
-@media (max-width: 768px) {{
-    .top-nav {{
-        padding: 15px 20px;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {{
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }}
+    
+    .stApp {{
+        background: linear-gradient(135deg, {BACKGROUND_COLOR} 0%, #fff5f5 100%);
+        background-attachment: fixed;
+    }}
+    
+    /* ==========================================
+       HEADER - ELEGANT NAVIGATION
+       ========================================== */
+    .header {{
+        background: {CARD_BACKGROUND};
+        padding: 1rem 1.5rem;
+        border-radius: 0 0 24px 24px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 20px {SHADOW_COLOR};
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        border-bottom: 3px solid {PRIMARY_COLOR};
+    }}
+    
+    .logo-container {{
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }}
+    
     .logo-icon {{
         width: 55px;
         height: 55px;
-        font-size: 24px;
+        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
+        border-radius: {logo_border_radius};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.4rem;
+        color: white;
+        box-shadow: 0 4px 15px {SHADOW_COLOR};
+        flex-shrink: 0;
+        transition: transform 0.3s ease;
     }}
-    .logo-text {{
-        font-size: 20px;
+    
+    .logo-icon:hover {{
+        transform: scale(1.05) rotate(-5deg);
     }}
-    .nav-tagline {{
-        font-size: 11px;
+    
+    .brand-text {{
+        flex: 1;
     }}
-}}
-
-/* Content Wrapper */
-.content-wrapper {{
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 40px 20px;
-    background: {BACKGROUND_COLOR};
-}}
-
-@media (max-width: 768px) {{
+    
+    .brand-name {{
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: {TEXT_PRIMARY};
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }}
+    
+    .brand-tagline {{
+        font-size: 0.75rem;
+        color: {TEXT_SECONDARY};
+        margin-top: 4px;
+        font-weight: 500;
+    }}
+    
+    @media (min-width: 768px) {{
+        .header {{
+            padding: 1.2rem 2.5rem;
+            border-radius: 0 0 32px 32px;
+        }}
+        .logo-icon {{
+            width: 65px;
+            height: 65px;
+            font-size: 1.6rem;
+        }}
+        .brand-name {{
+            font-size: 1.6rem;
+        }}
+        .brand-tagline {{
+            font-size: 0.85rem;
+        }}
+    }}
+    
+    /* ==========================================
+       CONTENT CONTAINER
+       ========================================== */
     .content-wrapper {{
-        padding: 25px 15px;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 1rem 2rem 1rem;
     }}
-}}
-
-/* Section Headers */
-.section-header {{
-    font-size: 28px;
-    font-weight: 700;
-    color: {TEXT_PRIMARY};
-    margin: 40px 0 25px 0;
-    padding-bottom: 15px;
-    border-bottom: 3px solid {PRIMARY_COLOR};
-}}
-
-/* Premium Product Cards */
-.product-card {{
-    background: {CARD_BACKGROUND};
-    border: 1px solid #e7e9ec;
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}}
-
-.product-card:hover {{
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    border-color: {PRIMARY_COLOR};
-}}
-
-.stock-badge {{
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    z-index: 5;
-}}
-
-.badge-in-stock {{
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-}}
-
-.badge-out-stock {{
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-}}
-
-.product-info {{
-    padding: 20px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: #f8f9fa;
-    min-height: 200px;
-    border-top: 1px solid #e9ecef;
-}}
-
-.product-title {{
-    font-size: 17px;
-    font-weight: 600;
-    color: {TEXT_PRIMARY};
-    margin: 0 0 12px 0;
-    line-height: 1.4;
-    min-height: 48px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}}
-
-.product-description {{
-    font-size: 14px;
-    color: {TEXT_SECONDARY};
-    line-height: 1.6;
-    margin: 0 0 15px 0;
-    min-height: 44px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}}
-
-.product-price {{
-    font-size: 26px;
-    font-weight: 800;
-    color: {PRICE_COLOR};
-    margin: 0 0 12px 0;
-    padding: 8px 0;
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-}}
-
-.price-currency {{
-    font-size: 16px;
-    font-weight: 600;
-    color: {TEXT_SECONDARY};
-}}
-
-.variant-selector {{
-    background: #f9fafb;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 15px;
-}}
-
-.variant-option {{
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin: 5px;
-    cursor: pointer;
-    display: inline-block;
-    transition: all 0.3s ease;
-    font-size: 13px;
-    font-weight: 600;
-}}
-
-.variant-option:hover {{
-    border-color: {PRIMARY_COLOR};
-    background: #fef3c7;
-}}
-
-.variant-option.selected {{
-    border-color: {PRIMARY_COLOR};
-    background: {PRIMARY_COLOR};
-    color: white;
-}}
-
-/* Premium Buttons */
-.stButton>button {{
-    background: linear-gradient(135deg, {BUTTON_COLOR} 0%, {PRIMARY_COLOR} 100%);
-    color: {BUTTON_TEXT_COLOR};
-    border: none;
-    border-radius: 10px;
-    padding: 13px 24px;
-    font-weight: 700;
-    font-size: 15px;
-    width: 100%;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-.stButton>button:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-}}
-
-.stButton>button:disabled {{
-    background: #e5e7eb;
-    color: #9ca3af;
-    box-shadow: none;
-}}
-
-/* Small Admin Button */
-.admin-btn-small button {{
-    padding: 8px 16px !important;
-    font-size: 13px !important;
-    width: auto !important;
-    min-width: 110px !important;
-}}
-
-/* Admin Container */
-.admin-container {{
-    background: {CARD_BACKGROUND};
-    border: 1px solid #e7e9ec;
-    border-radius: 12px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}}
-
-/* Stats Cards */
-.stat-card {{
-    background: linear-gradient(135deg, {CARD_BACKGROUND} 0%, #fafafa 100%);
-    border: 1px solid #e7e9ec;
-    border-radius: 12px;
-    padding: 28px;
-    text-align: center;
-    transition: all 0.3s ease;
-}}
-
-.stat-card:hover {{
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}}
-
-.stat-number {{
-    font-size: 36px;
-    font-weight: 800;
-    background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {BUTTON_COLOR} 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 8px;
-}}
-
-.stat-label {{
-    font-size: 14px;
-    color: {TEXT_SECONDARY};
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-/* Forms */
-.stTextInput>div>div>input,
-.stTextArea>div>div>textarea,
-.stNumberInput>div>div>input {{
-    border-radius: 8px;
-    border: 2px solid #e5e7eb;
-    padding: 12px 16px;
-    font-size: 15px;
-    transition: all 0.3s ease;
-}}
-
-.stTextInput>div>div>input:focus,
-.stTextArea>div>div>textarea:focus,
-.stNumberInput>div>div>input:focus {{
-    border-color: {PRIMARY_COLOR};
-    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1);
-}}
-
-/* Order Container */
-.order-container {{
-    background: {CARD_BACKGROUND};
-    border: 2px solid #e7e9ec;
-    border-radius: 16px;
-    padding: 35px;
-    margin: 40px 0;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}}
-
-.order-summary {{
-    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-    padding: 25px;
-    border-radius: 12px;
-    margin-top: 20px;
-    border: 1px solid #e5e7eb;
-}}
-
-/* Success Message */
-.success-message {{
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border: 2px solid #6ee7b7;
-    color: #065f46;
-    padding: 25px;
-    border-radius: 12px;
-    margin: 25px 0;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-}}
-
-/* Footer */
-.footer-section {{
-    background: {FOOTER_BACKGROUND};
-    color: {FOOTER_TEXT_COLOR};
-    padding: 50px 20px;
-    margin-top: 80px;
-    text-align: center;
-    border-top: 4px solid {PRIMARY_COLOR};
-}}
-
-.footer-links {{
-    display: flex;
-    justify-content: center;
-    gap: 35px;
-    margin-bottom: 25px;
-    flex-wrap: wrap;
-}}
-
-.footer-link {{
-    color: {FOOTER_TEXT_COLOR};
-    font-size: 15px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}}
-
-.footer-link:hover {{
-    color: {BUTTON_COLOR};
-    transform: translateY(-2px);
-}}
-
-.footer-copyright {{
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 13px;
-    margin-top: 25px;
-    font-weight: 500;
-}}
-
-/* Admin Login */
-.admin-login-box {{
-    max-width: 420px;
-    margin: 80px auto;
-    background: {CARD_BACKGROUND};
-    border: 1px solid #e7e9ec;
-    border-radius: 16px;
-    padding: 45px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}}
-
-/* Info Box */
-.info-box {{
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    border: 1px solid #93c5fd;
-    border-radius: 10px;
-    padding: 18px;
-    margin: 20px 0;
-    font-size: 14px;
-    color: #1e40af;
-    font-weight: 500;
-}}
-
-{CUSTOM_CSS}
+    
+    @media (min-width: 768px) {{
+        .content-wrapper {{
+            padding: 0 2rem 3rem 2rem;
+        }}
+    }}
+    
+    /* ==========================================
+       SECTION HEADERS
+       ========================================== */
+    .section-title {{
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: {TEXT_PRIMARY};
+        margin: 2rem 0 1.5rem 0;
+        text-align: center;
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }}
+    
+    .section-title::after {{
+        content: '';
+        display: block;
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT});
+        margin: 0.8rem auto 0;
+        border-radius: 2px;
+    }}
+    
+    @media (min-width: 768px) {{
+        .section-title {{
+            font-size: 2rem;
+            margin: 2.5rem 0 2rem 0;
+        }}
+    }}
+    
+    /* ==========================================
+       PRODUCT CARDS - ELEGANT FEMININE STYLE
+       ========================================== */
+    .product-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }}
+    
+    @media (min-width: 768px) {{
+        .product-grid {{
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }}
+    }}
+    
+    .product-card {{
+        background: {CARD_BACKGROUND};
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 20px rgba(0,0,0,0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid {BORDER_COLOR};
+        position: relative;
+    }}
+    
+    .product-card:hover {{
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px {SHADOW_COLOR};
+        border-color: {PRIMARY_COLOR};
+    }}
+    
+    .product-image-wrapper {{
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
+        overflow: hidden;
+    }}
+    
+    .product-image-container {{
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+    }}
+    
+    .product-image {{
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+        border-radius: 12px;
+    }}
+    
+    .product-card:hover .product-image {{
+        transform: scale(1.05);
+    }}
+    
+    .stock-badge {{
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        z-index: 10;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }}
+    
+    .badge-in-stock {{
+        background: linear-gradient(135deg, {SUCCESS_COLOR}, #059669);
+        color: white;
+    }}
+    
+    .badge-out-stock {{
+        background: linear-gradient(135deg, {ERROR_COLOR}, #dc2626);
+        color: white;
+    }}
+    
+    .product-content {{
+        padding: 1.2rem;
+        background: {CARD_BACKGROUND};
+    }}
+    
+    .product-name {{
+        font-size: 1rem;
+        font-weight: 700;
+        color: {TEXT_PRIMARY};
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.6rem;
+    }}
+    
+    @media (min-width: 768px) {{
+        .product-name {{
+            font-size: 1.1rem;
+        }}
+    }}
+    
+    .product-description {{
+        font-size: 0.8rem;
+        color: {TEXT_SECONDARY};
+        line-height: 1.5;
+        margin-bottom: 0.8rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.4rem;
+    }}
+    
+    .product-price {{
+        font-size: 1.3rem;
+        color: {PRICE_COLOR};
+        font-weight: 800;
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }}
+    
+    .price-currency {{
+        font-size: 0.8rem;
+        color: {TEXT_MUTED};
+        font-weight: 600;
+    }}
+    
+    .variant-hint {{
+        font-size: 0.75rem;
+        color: {PRIMARY_COLOR};
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        padding: 4px 8px;
+        background: {SURFACE_COLOR};
+        border-radius: 6px;
+        display: inline-block;
+    }}
+    
+    /* ==========================================
+       CAROUSEL CONTROLS
+       ========================================== */
+    .carousel-controls {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 10px;
+        background: {CARD_BACKGROUND};
+        border-top: 1px solid {BORDER_COLOR};
+    }}
+    
+    .carousel-btn {{
+        background: linear-gradient(135deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT});
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: white;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px {SHADOW_COLOR};
+    }}
+    
+    .carousel-btn:hover {{
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px {SHADOW_COLOR};
+    }}
+    
+    .carousel-indicator {{
+        color: {TEXT_SECONDARY};
+        font-size: 0.8rem;
+        font-weight: 700;
+        min-width: 40px;
+        text-align: center;
+        background: {SURFACE_COLOR};
+        padding: 4px 12px;
+        border-radius: 12px;
+    }}
+    
+    /* ==========================================
+       BUTTONS - GOLDEN THEME
+       ========================================== */
+    .stButton > button {{
+        background: linear-gradient(135deg, {PRIMARY_LIGHT} 0%, {PRIMARY_COLOR} 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.8rem 1.5rem !important;
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px {SHADOW_COLOR} !important;
+        width: 100% !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }}
+    
+    .stButton > button:hover {{
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px {SHADOW_COLOR} !important;
+    }}
+    
+    .stButton > button:disabled {{
+        background: #e5e7eb !important;
+        color: #9ca3af !important;
+        box-shadow: none !important;
+        cursor: not-allowed !important;
+    }}
+    
+    /* Admin button smaller */
+    .admin-btn-container button {{
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem !important;
+        width: auto !important;
+        min-width: 100px !important;
+    }}
+    
+    /* ==========================================
+       FORMS - ELEGANT INPUTS
+       ========================================== */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {{
+        background-color: {CARD_BACKGROUND} !important;
+        color: {TEXT_PRIMARY} !important;
+        border: 2px solid {BORDER_COLOR} !important;
+        border-radius: 12px !important;
+        padding: 0.9rem 1rem !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+    }}
+    
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {{
+        border-color: {PRIMARY_COLOR} !important;
+        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1) !important;
+        outline: none !important;
+    }}
+    
+    .stTextInput > label,
+    .stNumberInput > label,
+    .stTextArea > label,
+    .stSelectbox > label {{
+        color: {TEXT_PRIMARY} !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        margin-bottom: 0.4rem !important;
+    }}
+    
+    /* ==========================================
+       ADMIN CARDS
+       ========================================== */
+    .admin-card {{
+        background: {CARD_BACKGROUND};
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 2px solid {BORDER_COLOR};
+    }}
+    
+    .stat-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }}
+    
+    @media (min-width: 768px) {{
+        .stat-grid {{
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }}
+    }}
+    
+    .stat-box {{
+        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
+        color: white;
+        padding: 1.5rem 1rem;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 10px 25px {SHADOW_COLOR};
+        transition: transform 0.3s ease;
+    }}
+    
+    .stat-box:hover {{
+        transform: translateY(-3px);
+    }}
+    
+    .stat-number {{
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+        line-height: 1;
+    }}
+    
+    @media (min-width: 768px) {{
+        .stat-number {{
+            font-size: 2.2rem;
+        }}
+    }}
+    
+    .stat-label {{
+        font-size: 0.75rem;
+        opacity: 0.95;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    
+    /* ==========================================
+       ORDER FORM & CHECKOUT
+       ========================================== */
+    .order-container {{
+        background: {CARD_BACKGROUND};
+        border-radius: 24px;
+        padding: 2rem 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        border: 2px solid {BORDER_COLOR};
+    }}
+    
+    @media (min-width: 768px) {{
+        .order-container {{
+            padding: 2.5rem;
+            margin: 3rem 0;
+        }}
+    }}
+    
+    .order-summary {{
+        background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
+        border: 2px solid {BORDER_COLOR};
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }}
+    
+    .order-summary-title {{
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: {TEXT_PRIMARY};
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid {BORDER_COLOR};
+    }}
+    
+    .order-summary-row {{
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        color: {TEXT_SECONDARY};
+    }}
+    
+    .order-summary-total {{
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: {PRICE_COLOR};
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 2px solid {BORDER_COLOR};
+    }}
+    
+    /* Variant Selector */
+    .variant-selector {{
+        background: {SURFACE_COLOR};
+        border: 2px solid {BORDER_COLOR};
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }}
+    
+    .variant-label {{
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: {TEXT_PRIMARY};
+        margin-bottom: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    
+    /* ==========================================
+       SUCCESS MESSAGE
+       ========================================== */
+    .success-message {{
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border: 2px solid {SUCCESS_COLOR};
+        color: #065f46;
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 2rem 0;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        position: relative;
+        overflow: hidden;
+    }}
+    
+    .success-message::before {{
+        content: '✨';
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 80px;
+        opacity: 0.2;
+    }}
+    
+    .success-title {{
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }}
+    
+    /* ==========================================
+       LOADING OVERLAY
+       ========================================== */
+    .loading-overlay {{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(254, 243, 242, 0.98);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(10px);
+    }}
+    
+    .loading-spinner {{
+        width: 60px;
+        height: 60px;
+        border: 4px solid {BORDER_COLOR};
+        border-top: 4px solid {PRIMARY_COLOR};
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }}
+    
+    @keyframes spin {{
+        0% {{ transform: rotate(0deg); }}
+        100% {{ transform: rotate(360deg); }}
+    }}
+    
+    .loading-text {{
+        margin-top: 1.5rem;
+        font-size: 1.1rem;
+        color: {PRIMARY_COLOR};
+        font-weight: 700;
+    }}
+    
+    /* ==========================================
+       FOOTER - ELEGANT
+       ========================================== */
+    .footer {{
+        background: linear-gradient(135deg, {TEXT_PRIMARY} 0%, {TEXT_SECONDARY} 100%);
+        color: white;
+        padding: 3rem 1.5rem;
+        border-radius: 24px 24px 0 0;
+        margin-top: 4rem;
+        text-align: center;
+        border-top: 4px solid {PRIMARY_COLOR};
+    }}
+    
+    .footer-title {{
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: white;
+    }}
+    
+    .footer-links {{
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }}
+    
+    .footer-link {{
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }}
+    
+    .footer-link:hover {{
+        color: {PRIMARY_LIGHT};
+        transform: translateY(-2px);
+    }}
+    
+    .footer-copyright {{
+        font-size: 0.8rem;
+        opacity: 0.7;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255,255,255,0.2);
+    }}
+    
+    /* ==========================================
+       STATUS BADGES
+       ========================================== */
+    .status-badge {{
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    .status-approved {{
+        background: linear-gradient(135deg, {SUCCESS_COLOR}, #059669);
+        color: white;
+    }}
+    .status-pending {{
+        background: linear-gradient(135deg, {WARNING_COLOR}, #d97706);
+        color: white;
+    }}
+    
+    /* ==========================================
+       ADMIN LOGIN
+       ========================================== */
+    .admin-login-box {{
+        max-width: 400px;
+        margin: 3rem auto;
+        background: {CARD_BACKGROUND};
+        border-radius: 24px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        border: 2px solid {BORDER_COLOR};
+    }}
+    
+    /* Info Box */
+    .info-box {{
+        background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
+        border: 2px solid {BORDER_COLOR};
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        color: {TEXT_SECONDARY};
+    }}
+    
+    .info-box.success {{
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        border-color: {SUCCESS_COLOR};
+        color: #065f46;
+    }}
+    
+    .info-box.warning {{
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border-color: {WARNING_COLOR};
+        color: #92400e;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- GOOGLE SHEETS AUTH ----------------
-scope = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+# ==========================================
+# GOOGLE SHEETS CONNECTION (Cached)
+# ==========================================
 
-raw_creds = os.environ.get("GCP_SERVICE_ACCOUNT")
-if not raw_creds:
-    st.error("⚠️ Server configuration error")
-    st.stop()
+@st.cache_resource(ttl=3600)
+def get_sheets_client():
+    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    try:
+        creds_dict = json.loads(os.environ.get("GCP_SERVICE_ACCOUNT"))
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        return gspread.authorize(creds)
+    except Exception as e:
+        st.error(f"Connection error: {str(e)}")
+        st.stop()
 
-try:
-    creds_dict = json.loads(raw_creds)
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-except Exception as e:
-    st.error(f"⚠️ Google Sheets connection error: {str(e)}")
-    st.stop()
-
-# ---------------- LOAD SHEETS ----------------
-try:
-    products_sheet = client.open(SHEET_NAME).worksheet(PRODUCTS_WORKSHEET)
-    orders_sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
-except Exception as e:
-    st.error(f"⚠️ Could not find Google Sheet '{SHEET_NAME}' or worksheets. Error: {str(e)}")
-    st.stop()
-
+@st.cache_data(ttl=CACHE_TTL_PRODUCTS, show_spinner=False)
 def load_products():
-    records = products_sheet.get_all_records(expected_headers=[
-        "id","name","price","stock",
-        "image1","image2","image3",
-        "description","status","variants"
-    ])
-    rows = []
-    for i, r in enumerate(records, start=2):
-        r["_row"] = i
-        rows.append(r)
-    return pd.DataFrame(rows)
+    try:
+        client = get_sheets_client()
+        sheet = client.open(SHEET_NAME).worksheet(PRODUCTS_WORKSHEET)
+        records = sheet.get_all_records(expected_headers=PRODUCT_COLUMNS)
+        for i, r in enumerate(records, start=2):
+            r["_row"] = i
+        return pd.DataFrame(records)
+    except Exception as e:
+        st.error(f"Failed to load products: {str(e)}")
+        return pd.DataFrame()
 
-products_df = load_products()
+@st.cache_data(ttl=CACHE_TTL_ORDERS, show_spinner=False)
+def load_orders():
+    try:
+        client = get_sheets_client()
+        sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
+        records = sheet.get_all_records(expected_headers=ORDER_COLUMNS)
+        for i, r in enumerate(records, start=2):
+            r["_row"] = i
+        return pd.DataFrame(records)
+    except:
+        return pd.DataFrame()
 
-# ==============================
-# PROFESSIONAL NAVIGATION
-# ==============================
+# ==========================================
+# HEADER COMPONENT
+# ==========================================
+
 st.markdown(f"""
-<div class='top-nav'>
+<div class='header'>
     <div class='logo-container'>
         <div class='logo-icon'>{LOGO_TEXT}</div>
-        <div class='logo-text-container'>
-            <div class='logo-text'>{STORE_NAME}</div>
-            <div class='nav-tagline'>{STORE_TAGLINE}</div>
+        <div class='brand-text'>
+            <div class='brand-name'>{STORE_NAME}</div>
+            <div class='brand-tagline'>{STORE_TAGLINE}</div>
         </div>
     </div>
 </div>
@@ -673,518 +1037,508 @@ st.markdown(f"""
 
 st.markdown("<div class='content-wrapper'>", unsafe_allow_html=True)
 
-# ==============================
-# ADMIN LOGIN
-# ==============================
-if st.session_state.show_admin_login and not st.session_state.admin_logged:
-    st.markdown("<div class='admin-login-box'>", unsafe_allow_html=True)
-    st.markdown("### 🔐 Admin Login")
-    st.markdown("Enter credentials to access dashboard")
-    
-    password = st.text_input("Password", type="password")
-    
-    if st.button(BUTTON_ADMIN_LOGIN, use_container_width=True):
-        if password == os.environ.get("ADMIN_PASSWORD", "change_me"):
-            st.session_state.admin_logged = True
-            st.session_state.show_admin_login = False
-            st.success("✅ Login successful!")
-            st.rerun()
-        else:
-            st.error("❌ Incorrect password")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    if st.button("← Back to Shop"):
-        st.session_state.show_admin_login = False
-        st.rerun()
-    
-    st.stop()
+# ==========================================
+# ADMIN ACCESS TOGGLE
+# ==========================================
 
-# ==============================
-# ADMIN DASHBOARD
-# ==============================
-if st.session_state.admin_logged:
-    
-    st.markdown(f"<h1 style='color:{TEXT_PRIMARY}; margin-bottom:10px;'>{HEADER_ADMIN_DASHBOARD}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:{TEXT_SECONDARY}; margin-bottom:30px; font-size:16px;'>Manage products, orders & notifications</p>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("🚪 Logout", use_container_width=True):
-            st.session_state.admin_logged = False
-            st.rerun()
-    
-    # Check notifications
-    telegram_configured = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
-    email_configured = bool(os.environ.get("ADMIN_EMAIL") and os.environ.get("EMAIL_APP_PASSWORD"))
-    cloudinary_configured = bool(os.environ.get("CLOUDINARY_CLOUD_NAME") and os.environ.get("CLOUDINARY_API_KEY") and os.environ.get("CLOUDINARY_API_SECRET"))
-    
-    if not cloudinary_configured:
-        st.markdown("""
-        <div class='info-box' style='background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-color:#fca5a5; color:#991b1b;'>
-            ⚠️ <strong>Cloudinary not configured!</strong> Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to environment variables.
-        </div>
-        """, unsafe_allow_html=True)
-    
-    if not telegram_configured and not email_configured:
-        st.markdown("""
-        <div class='info-box'>
-            ⚠️ <strong>No notifications configured!</strong> Set up Telegram or Email to receive order alerts.
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        notif_status = []
-        if telegram_configured:
-            notif_status.append("Telegram")
-        if email_configured:
-            notif_status.append("Email")
-        
-        st.markdown(f"""
-        <div style='background:linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border:2px solid #6ee7b7; border-radius:10px; padding:18px; margin:20px 0;'>
-            ✅ <strong>Notifications active via: {', '.join(notif_status)}</strong>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Statistics
-    orders_df = pd.DataFrame(
-        orders_sheet.get_all_records(expected_headers=[
-            "name","phone","location","items",
-            "qty","amount","reference","timestamp","status","variant"
-        ])
-    )
-    
-    if SHOW_STATISTICS:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"""
-            <div class='stat-card'>
-                <div class='stat-number'>{len(products_df)}</div>
-                <div class='stat-label'>Products</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class='stat-card'>
-                <div class='stat-number'>{len(orders_df)}</div>
-                <div class='stat-label'>Orders</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            total_revenue = orders_df['amount'].sum() if not orders_df.empty else 0
-            st.markdown(f"""
-            <div class='stat-card'>
-                <div class='stat-number'>{CURRENCY_SYMBOL} {total_revenue:,.0f}</div>
-                <div class='stat-label'>Revenue</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-    
-    # ADD PRODUCT
-    st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
-    st.markdown("### ➕ Add New Product")
-    
-    st.info("💡 **Variants:** Add different sizes/options with different prices (e.g., Small:100, Medium:150, Large:200). Leave empty if product has single price.")
-    
-    with st.form("add_product"):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Product Name *")
-            price = st.number_input(f"Base Price ({CURRENCY}) *", min_value=0, help="Default price if no variants")
-        with col2:
-            stock = st.number_input("Stock Quantity *", min_value=0)
-            variants_input = st.text_input("Variants (Optional)", placeholder="Small:100, Medium:150, Large:200", help="Format: Size:Price, Size:Price")
-            
-        desc = st.text_area("Product Description")
-        images = st.file_uploader(
-            "Upload Product Images (Up to 3)",
-            type=["png","jpg","jpeg"],
-            accept_multiple_files=True
-        )
-        add = st.form_submit_button("Add Product", use_container_width=True)
-        
-        if add and name and images:
-            image_urls = []
-            
-            with st.spinner("☁️ Uploading images to Cloudinary..."):
-                for idx, img in enumerate(images[:3], 1):
-                    filename = f"{name.replace(' ', '_')}_{idx}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
-                    url = upload_to_cloudinary(img, filename)
-                    
-                    if url:
-                        image_urls.append(url)
-                        st.success(f"✅ Image {idx} uploaded successfully")
-                    else:
-                        st.error(f"❌ Failed to upload image {idx}")
-                        st.stop()
-            
-            while len(image_urls) < 3:
-                image_urls.append("")
-            
-            new_id = int(products_df["id"].max()) + 1 if not products_df.empty else 1
-            status = STATUS_IN_STOCK if stock > 0 else STATUS_OUT_OF_STOCK
-            
-            products_sheet.append_row([
-                new_id, name, price, stock,
-                image_urls[0], image_urls[1], image_urls[2],
-                desc, status, variants_input
-            ])
-            
-            st.success("✅ Product added successfully!")
-            st.rerun()
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # MANAGE PRODUCTS
-    st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
-    st.markdown("### 🗂️ Manage Products")
-    products_df = load_products()
-    
-    if not products_df.empty:
-        cols = st.columns(3)
-        for idx, row in products_df.iterrows():
-            with cols[idx % 3]:
-                # Show all images
-                images_to_show = [row["image1"], row["image2"], row["image3"]]
-                images_to_show = [img for img in images_to_show if img]
-                
-                if images_to_show:
-                    st.image(images_to_show[0], use_column_width=True)
-                    if len(images_to_show) > 1:
-                        st.caption(f"📸 {len(images_to_show)} images")
-                
-                st.markdown(f"**{row['name']}**")
-                st.markdown(f"Stock: {row['stock']} | {CURRENCY_SYMBOL} {row['price']}")
-                
-                if row.get('variants'):
-                    st.caption(f"🎯 Variants: {row['variants']}")
-                
-                if st.button(f"Delete", key=f"del_{row['id']}", use_container_width=True):
-                    for img_col in ['image1', 'image2', 'image3']:
-                        img_url = row.get(img_col, '')
-                        if img_url and 'cloudinary.com' in img_url:
-                            delete_from_cloudinary(img_url)
-                    
-                    products_sheet.delete_rows(row["_row"])
-                    st.success("Product and images deleted!")
-                    st.rerun()
-    else:
-        st.info("No products yet")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # ORDERS
-    st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
-    st.markdown("### 📦 Recent Orders")
-    if not orders_df.empty:
-        st.dataframe(orders_df, use_container_width=True, height=400)
-    else:
-        st.info("No orders yet")
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # SETUP GUIDE
-    st.markdown("<div class='admin-container'>", unsafe_allow_html=True)
-    st.markdown("### 🔔 Notification Setup")
-    
-    tab1, tab2, tab3 = st.tabs(["📧 Email", "📱 Telegram", "☁️ Cloudinary"])
-    
-    with tab1:
-        st.markdown("""
-        **Gmail Setup (5 min)**
-        1. [Google Account](https://myaccount.google.com) → Security
-        2. Enable 2-Step Verification
-        3. App passwords → Mail → Generate
-        4. Add to Render: `ADMIN_EMAIL` & `EMAIL_APP_PASSWORD`
-        """)
-    
-    with tab2:
-        st.markdown("""
-        **Telegram Setup (5 min)**
-        1. Search `@BotFather` → `/newbot`
-        2. Search `@userinfobot` → get Chat ID
-        3. Add to Render: `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID`
-        4. Send `/start` to your bot
-        """)
-    
-    with tab3:
-        st.markdown("""
-        **Cloudinary Setup (5 min)**
-        1. Sign up at [Cloudinary](https://cloudinary.com)
-        2. Go to Dashboard → Copy credentials
-        3. Add to Render:
-           - `CLOUDINARY_CLOUD_NAME`
-           - `CLOUDINARY_API_KEY`
-           - `CLOUDINARY_API_SECRET`
-        4. Free tier: 25GB storage + 25GB bandwidth/month
-        """)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.stop()
-
-# ==============================
-# PUBLIC SHOP
-# ==============================
-
-# Small admin button
 if SHOW_ADMIN_BUTTON:
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2, col3 = st.columns([6, 1, 1])
     with col3:
-        st.markdown("<div class='admin-btn-small'>", unsafe_allow_html=True)
-        if st.button("🔐 Admin"):
-            st.session_state.show_admin_login = True
+        st.markdown("<div class='admin-btn-container'>", unsafe_allow_html=True)
+        if st.button("🔐 Admin", key="admin_toggle"):
+            st.session_state.show_admin_login = not st.session_state.show_admin_login
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown(f"<div class='section-header'>{HEADER_FEATURED_PRODUCTS}</div>", unsafe_allow_html=True)
+# ==========================================
+# ADMIN LOGIN
+# ==========================================
+
+if st.session_state.show_admin_login and not st.session_state.admin_logged:
+    st.markdown("<div class='admin-login-box'>", unsafe_allow_html=True)
+    st.markdown(f"### 🔐 {TEXT_ADMIN_LOGIN}")
+    st.markdown("Enter your password to access the dashboard")
+    
+    with st.form("admin_login"):
+        password = st.text_input("Password", type="password")
+        cols = st.columns([1, 1])
+        with cols[0]:
+            if st.form_submit_button("Login", use_container_width=True):
+                if password == os.environ.get("ADMIN_PASSWORD", "change_me"):
+                    st.session_state.admin_logged = True
+                    st.session_state.show_admin_login = False
+                    st.cache_data.clear()
+                    st.success("✅ Access granted!")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid password")
+        with cols[1]:
+            if st.form_submit_button("Cancel", use_container_width=True):
+                st.session_state.show_admin_login = False
+                st.rerun()
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# ==========================================
+# ADMIN DASHBOARD
+# ==========================================
+
+if st.session_state.admin_logged:
+    st.markdown(f"<div class='section-title'>{TEXT_ADMIN_DASHBOARD}</div>", unsafe_allow_html=True)
+    
+    products_df = load_products()
+    orders_df = load_orders()
+    
+    # Stats
+    total_revenue = orders_df['amount'].sum() if not orders_df.empty else 0
+    
+    st.markdown(f"""
+    <div class='stat-grid'>
+        <div class='stat-box'>
+            <div class='stat-number'>{len(products_df)}</div>
+            <div class='stat-label'>Products</div>
+        </div>
+        <div class='stat-box'>
+            <div class='stat-number'>{len(orders_df)}</div>
+            <div class='stat-label'>Orders</div>
+        </div>
+        <div class='stat-box'>
+            <div class='stat-number'>{CURRENCY_SYMBOL}{total_revenue:,.0f}</div>
+            <div class='stat-label'>Revenue</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 1])
+    with col2:
+        if st.button("🚪 Logout", use_container_width=True):
+            st.session_state.admin_logged = False
+            st.cache_data.clear()
+            st.rerun()
+    
+    # Add Product
+    st.markdown("<div class='admin-card'>", unsafe_allow_html=True)
+    st.markdown("### ➕ Add New Product")
+    
+    with st.form("add_product", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Product Name *", placeholder="e.g., Gold Necklace Set")
+            price = st.number_input(f"Base Price ({CURRENCY_SYMBOL}) *", min_value=0, value=50)
+        with col2:
+            stock = st.number_input("Stock Quantity *", min_value=0, value=10)
+            variants = st.text_input("Variants (Optional)", placeholder="Small:50, Medium:75, Large:100")
+        
+        description = st.text_area("Description", placeholder="Describe your product...")
+        
+        col_img, col_vid = st.columns(2)
+        with col_img:
+            images = st.file_uploader("Product Images (Max 3)", type=["png","jpg","jpeg"], accept_multiple_files=True)
+        
+        if st.form_submit_button("🚀 Add Product", use_container_width=True):
+            if name and images:
+                with st.spinner("Uploading images..."):
+                    image_urls = []
+                    for idx, img in enumerate(images[:MAX_PRODUCT_IMAGES], 1):
+                        filename = f"{name.replace(' ', '_')}_{idx}_{int(time.time())}.jpg"
+                        url = upload_to_cloudinary(img, filename)
+                        if url:
+                            image_urls.append(url)
+                    
+                    while len(image_urls) < MAX_PRODUCT_IMAGES:
+                        image_urls.append("")
+                    
+                    try:
+                        client = get_sheets_client()
+                        sheet = client.open(SHEET_NAME).worksheet(PRODUCTS_WORKSHEET)
+                        new_id = int(products_df["id"].max()) + 1 if not products_df.empty and "id" in products_df.columns else 1
+                        status = STATUS_IN_STOCK if stock > 0 else STATUS_OUT_OF_STOCK
+                        
+                        sheet.append_row([new_id, name, price, stock, *image_urls, description, status, variants])
+                        st.cache_data.clear()
+                        st.success("✅ Product added!")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+            else:
+                st.warning("⚠️ Please provide name and images")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Manage Products
+    st.markdown("<div class='admin-card'>", unsafe_allow_html=True)
+    st.markdown("### 🗂️ Manage Products")
+    
+    if not products_df.empty:
+        for idx in range(0, len(products_df), 3):
+            cols = st.columns(3)
+            for i, col in enumerate(cols):
+                if idx + i < len(products_df):
+                    row = products_df.iloc[idx + i]
+                    with col:
+                        # Show first image
+                        if row.get("image1") and str(row["image1"]).strip():
+                            st.image(row["image1"], use_container_width=True)
+                        else:
+                            st.info("No image")
+                        
+                        st.markdown(f"**{row['name']}**")
+                        st.markdown(f"<span style='color:{PRICE_COLOR};font-weight:700;'>{CURRENCY_SYMBOL}{row['price']}</span>", unsafe_allow_html=True)
+                        st.caption(f"Stock: {row.get('stock', 0)}")
+                        
+                        # FIXED: Convert to Python int for JSON serialization
+                        delete_row = int(row["_row"])
+                        product_id = int(row["id"])
+                        
+                        if st.button("🗑️ Delete", key=f"del_{product_id}", use_container_width=True):
+                            # Delete images from Cloudinary
+                            for img_col in ['image1', 'image2', 'image3']:
+                                if row.get(img_col) and 'cloudinary.com' in str(row[img_col]):
+                                    delete_from_cloudinary(str(row[img_col]))
+                            
+                            try:
+                                client = get_sheets_client()
+                                sheet = client.open(SHEET_NAME).worksheet(PRODUCTS_WORKSHEET)
+                                sheet.delete_rows(delete_row)
+                                st.cache_data.clear()
+                                st.success("Deleted!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+    else:
+        st.info("No products found")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Orders Management
+    st.markdown("<div class='admin-card'>", unsafe_allow_html=True)
+    st.markdown("### 📦 Recent Orders")
+    
+    if not orders_df.empty:
+        for idx, order in orders_df.iterrows():
+            # Emoji status for expander label
+            status_icon = "✅" if order.get('status') == STATUS_APPROVED else "⏳"
+            status_text = order.get('status', STATUS_PENDING)
+            
+            # FIXED: Convert numpy types
+            order_ref = str(order['reference'])
+            order_name = str(order['name'])
+            order_amount = float(order['amount']) if pd.notna(order['amount']) else 0
+            
+            expander_label = f"📦 {order_ref} - {order_name} - {CURRENCY_SYMBOL}{order_amount:.0f} - {status_icon} {status_text}"
+            
+            with st.expander(expander_label):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    status_class = "status-approved" if order.get('status') == STATUS_APPROVED else "status-pending"
+                    st.markdown(f"""
+                        <div style='margin-bottom:15px;'>
+                            <span class='status-badge {status_class}'>{order.get('status', STATUS_PENDING)}</span>
+                        </div>
+                        <div style='line-height:1.8;'>
+                            <b style='color:{PRIMARY_COLOR};'>Customer:</b> {order['name']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Phone:</b> {order['phone']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Location:</b> {order['location']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Product:</b> {order['items']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Variant:</b> {order.get('variant', 'Standard')}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Quantity:</b> {order['qty']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Amount:</b> {CURRENCY_SYMBOL}{order['amount']}<br>
+                            <b style='color:{PRIMARY_COLOR};'>Date:</b> {order['timestamp']}
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # WhatsApp button
+                    clean_phone = ''.join(filter(str.isdigit, str(order['phone'])))
+                    if not clean_phone.startswith('233'):
+                        clean_phone = '233' + clean_phone.lstrip('0')
+                    
+                    msg = f"Hi {order['name']}! Your order {order['reference']} for {order['items']} ({CURRENCY_SYMBOL}{order['amount']}) is confirmed! ✨"
+                    wa_url = f"https://wa.me/{clean_phone}?text={quote(msg)}"
+                    
+                    st.markdown(f"""
+                        <a href="{wa_url}" target="_blank" style="display:block;background:linear-gradient(135deg,#25D366,#128C7E);color:white;padding:12px;border-radius:10px;text-align:center;text-decoration:none;margin-bottom:12px;font-weight:600;box-shadow:0 4px10px rgba(37,211,102,0.3);">
+                            📱 WhatsApp
+                        </a>
+                    """, unsafe_allow_html=True)
+                    
+                    # Approve button
+                    order_row = int(order["_row"])
+                    if order.get('status') == STATUS_PENDING:
+                        if st.button("✅ Approve", key=f"app_{idx}", use_container_width=True):
+                            try:
+                                client = get_sheets_client()
+                                sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
+                                sheet.update_cell(order_row, 9, STATUS_APPROVED)
+                                st.cache_data.clear()
+                                st.success("Approved!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+                    else:
+                        st.markdown(f"<div style='text-align:center;padding:12px;background:linear-gradient(135deg,{SUCCESS_COLOR},#059669);color:white;border-radius:10px;font-weight:600;'>✅ Approved</div>", unsafe_allow_html=True)
+    else:
+        st.info("No orders yet")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# ==========================================
+# PUBLIC SHOP - PRODUCT GRID
+# ==========================================
+
+products_df = load_products()
+
+st.markdown(f"<div class='section-title'>{TEXT_FEATURED_PRODUCTS}</div>", unsafe_allow_html=True)
 
 if products_df.empty:
-    st.info("🏗️ No products available. Check back soon!")
+    st.info("✨ New arrivals coming soon! Check back later.")
 else:
-    cols = st.columns(PRODUCTS_PER_ROW)
+    # Search
+    if ENABLE_SEARCH:
+        search_term = st.text_input("🔍 Search products...", placeholder="Search jewelry, accessories...", label_visibility="collapsed")
+        if search_term:
+            products_df = products_df[products_df['name'].str.contains(search_term, case=False, na=False)]
+    
+    # Product Grid
+    st.markdown("<div class='product-grid'>", unsafe_allow_html=True)
+    
     for idx, row in products_df.iterrows():
-        with cols[idx % PRODUCTS_PER_ROW]:
-            # Get all images
-            images = [row["image1"], row["image2"], row["image3"]]
-            images = [img for img in images if img]
-            
-            # Create unique key for this product's carousel
-            carousel_key = f"carousel_{row['id']}"
-            if carousel_key not in st.session_state:
-                st.session_state[carousel_key] = 0
-            
-            # Start product card
+        # Get images
+        images = []
+        for img_idx in range(1, 4):
+            img_key = f"image{img_idx}"
+            if img_key in row and row[img_key] and str(row[img_key]).strip():
+                images.append(str(row[img_key]))
+        
+        # Carousel state
+        carousel_key = f"carousel_{int(row['id'])}"
+        if carousel_key not in st.session_state:
+            st.session_state[carousel_key] = 0
+        
+        if images:
+            st.session_state[carousel_key] = st.session_state[carousel_key] % len(images)
+        
+        # Variant check
+        has_variants = row.get('variants') and str(row['variants']).strip()
+        
+        st.markdown("<div class='product-card'>", unsafe_allow_html=True)
+        
+        # Image Section
+        st.markdown("<div class='product-image-wrapper'>", unsafe_allow_html=True)
+        
+        if SHOW_STOCK_BADGE:
+            badge_class = "badge-in-stock" if row.get('status') == STATUS_IN_STOCK else "badge-out-stock"
+            badge_text = STATUS_IN_STOCK if row.get('status') == STATUS_IN_STOCK else STATUS_OUT_OF_STOCK
+            st.markdown(f"<div class='stock-badge {badge_class}'>{badge_text}</div>", unsafe_allow_html=True)
+        
+        # Display image
+        if images:
+            current_img = images[st.session_state[carousel_key]]
             st.markdown(f"""
-            <div class='product-card'>
-                <div class='product-image-wrapper' style='position:relative;'>
-            """, unsafe_allow_html=True)
-            
-            # Show stock badge
-            if SHOW_STOCK_BADGE:
-                badge_class = "badge-in-stock" if row["status"] == STATUS_IN_STOCK else "badge-out-stock"
-                st.markdown(f"<div class='stock-badge {badge_class}'>{row['status']}</div>", unsafe_allow_html=True)
-            
-            # Display current image
-            if images:
-                st.image(images[st.session_state[carousel_key]], use_container_width=True)
-                
-                # Image counter and navigation
-                if len(images) > 1:
-                    col_left, col_mid, col_right = st.columns([1, 2, 1])
-                    with col_left:
-                        if st.button("◀", key=f"prev_{row['id']}", use_container_width=True):
-                            st.session_state[carousel_key] = (st.session_state[carousel_key] - 1) % len(images)
-                            st.rerun()
-                    with col_mid:
-                        st.markdown(f"<div style='text-align:center; padding:8px 0; font-size:12px; color:#6b7280;'>{st.session_state[carousel_key] + 1} / {len(images)}</div>", unsafe_allow_html=True)
-                    with col_right:
-                        if st.button("▶", key=f"next_{row['id']}", use_container_width=True):
-                            st.session_state[carousel_key] = (st.session_state[carousel_key] + 1) % len(images)
-                            st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-            # Product info
-            st.markdown(f"""
-                <div class='product-info'>
-                    <div class='product-title'>{row['name']}</div>
-            """, unsafe_allow_html=True)
-            
-            if ENABLE_PRODUCT_DESCRIPTION and row.get('description'):
-                st.markdown(f"<div class='product-description'>{row['description']}</div>", unsafe_allow_html=True)
-            
-            st.markdown(f"""
-                    <div class='product-price'>
-                        <span class='price-currency'>{CURRENCY_SYMBOL}</span>{row['price']}
-                    </div>
-            """, unsafe_allow_html=True)
-            
-            # Show variants if available
-            if row.get('variants'):
-                variants_dict = {}
-                try:
-                    variant_pairs = row['variants'].split(',')
-                    for pair in variant_pairs:
-                        if ':' in pair:
-                            size, price = pair.strip().split(':')
-                            variants_dict[size.strip()] = int(price.strip())
-                except:
-                    pass
-                
-                if variants_dict:
-                    st.markdown("<div style='margin:12px 0 6px 0; font-size:12px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;'>Available Sizes:</div>", unsafe_allow_html=True)
-                    variant_options = " • ".join([f"{size} ({CURRENCY_SYMBOL}{price})" for size, price in variants_dict.items()])
-                    st.markdown(f"<div style='font-size:13px; color:#4b5563; margin:0 0 12px 0; line-height:1.8; font-weight:500;'>{variant_options}</div>", unsafe_allow_html=True)
-            
-            st.markdown("""
+                <div class='product-image-container'>
+                    <img src='{current_img}' class='product-image' loading='lazy' alt='{row['name']}'>
                 </div>
-            </div>
             """, unsafe_allow_html=True)
-            
-            # Product button
-            if row["status"] == STATUS_OUT_OF_STOCK:
-                st.button(BUTTON_OUT_OF_STOCK, key=f"out_{row['id']}", disabled=True, use_container_width=True)
-            else:
-                if st.button(BUTTON_ADD_TO_CART, key=f"order_{row['id']}", use_container_width=True):
-                    st.session_state.selected = row
+        else:
+            st.markdown("<div class='product-image-container'><div style='color:#9ca3af;font-size:0.9rem;'>No Image</div></div>", unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Carousel Controls
+        if len(images) > 1:
+            col_l, col_m, col_r = st.columns([1, 2, 1])
+            with col_l:
+                if st.button("◀", key=f"prev_{int(row['id'])}_{idx}", use_container_width=True):
+                    new_idx = (st.session_state[carousel_key] - 1) % len(images)
+                    st.session_state[carousel_key] = new_idx
+                    st.rerun()
+            with col_m:
+                st.markdown(f"<div style='text-align:center;padding:8px 0;font-size:0.8rem;color:#6b7280;font-weight:600;'>{st.session_state[carousel_key] + 1} / {len(images)}</div>", unsafe_allow_html=True)
+            with col_r:
+                if st.button("▶", key=f"next_{int(row['id'])}_{idx}", use_container_width=True):
+                    new_idx = (st.session_state[carousel_key] + 1) % len(images)
+                    st.session_state[carousel_key] = new_idx
+                    st.rerun()
+        
+        # Product Info
+        st.markdown(f"""
+            <div class='product-content'>
+                <div class='product-name'>{row['name']}</div>
+        """, unsafe_allow_html=True)
+        
+        if row.get('description'):
+            st.markdown(f"<div class='product-description'>{row['description']}</div>", unsafe_allow_html=True)
+        
+        st.markdown(f"""
+                <div class='product-price'>
+                    <span class='price-currency'>{CURRENCY_SYMBOL}</span>{row['price']}
+                </div>
+        """, unsafe_allow_html=True)
+        
+        if has_variants:
+            st.markdown("<div class='variant-hint'>✨ Multiple sizes available</div>", unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Button
+        if row.get('status') == STATUS_OUT_OF_STOCK:
+            st.button(TEXT_OUT_OF_STOCK, key=f"out_{int(row['id'])}", disabled=True, use_container_width=True)
+        else:
+            if st.button(TEXT_ADD_TO_CART, key=f"order_{int(row['id'])}", use_container_width=True):
+                st.session_state.selected_product = row
+                st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# ==============================
-# ORDER FORM
-# ==============================
-if "selected" in st.session_state:
-    p = st.session_state.selected
+# ==========================================
+# CHECKOUT FORM
+# ==========================================
+
+if "selected_product" in st.session_state:
+    p = st.session_state.selected_product
     
     st.markdown("<div class='order-container'>", unsafe_allow_html=True)
-    st.markdown(f"### {HEADER_CHECKOUT}")
-    st.markdown(f"**Product:** {p['name']}")
+    st.markdown(f"### {TEXT_CHECKOUT}")
+    st.markdown(f"<p style='color:{TEXT_SECONDARY};margin-bottom:1.5rem;'><strong>Product:</strong> {p['name']}</p>", unsafe_allow_html=True)
     
     # Parse variants
     variants_dict = {}
-    
-    if p.get('variants'):
+    if p.get('variants') and ENABLE_VARIANTS:
         try:
-            variant_pairs = p['variants'].split(',')
-            for pair in variant_pairs:
+            for pair in str(p['variants']).split(','):
                 if ':' in pair:
                     size, price = pair.strip().split(':')
                     variants_dict[size.strip()] = int(price.strip())
         except:
             pass
     
-    with st.form("order"):
+    with st.form("checkout", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            name = st.text_input(f"{LABEL_CUSTOMER_NAME} *")
-            phone = st.text_input(f"{LABEL_PHONE} *")
+            name = st.text_input(f"{TEXT_LABEL_NAME} *", placeholder="Your full name")
+            phone = st.text_input(f"{TEXT_LABEL_PHONE} *", placeholder="0541234567")
         with col2:
-            location = st.text_input(f"{LABEL_LOCATION} *")
-            qty = st.number_input(f"{LABEL_QUANTITY} *", 
-                                 min_value=MIN_ORDER_QUANTITY, 
-                                 max_value=MAX_ORDER_QUANTITY, 
-                                 value=MIN_ORDER_QUANTITY)
+            location = st.text_input(f"{TEXT_LABEL_LOCATION} *", placeholder="Accra, Kumasi, etc.")
+            qty = st.number_input(f"{TEXT_LABEL_QUANTITY} *", min_value=MIN_ORDER_QUANTITY, max_value=MAX_ORDER_QUANTITY, value=MIN_ORDER_QUANTITY)
         
-        # Show variant selector if variants exist
-        selected_variant_name = "Standard"
+        # Variant selector
+        selected_variant = "Standard"
         unit_price = int(p["price"])
         
         if variants_dict:
-            st.markdown("---")
-            st.markdown("### 🎯 Select Size/Option")
+            st.markdown("<div class='variant-selector'>", unsafe_allow_html=True)
+            st.markdown(f"<div class='variant-label'>{TEXT_LABEL_VARIANT}</div>", unsafe_allow_html=True)
             
-            # Create visual variant selector
             variant_options = list(variants_dict.items())
-            
-            # Display as radio buttons with prices
-            selected_option = st.radio(
-                "Choose your size:",
+            selected_idx = st.radio(
+                "",
                 options=range(len(variant_options)),
                 format_func=lambda x: f"{variant_options[x][0]} - {CURRENCY_SYMBOL}{variant_options[x][1]}",
-                horizontal=True
+                horizontal=True,
+                label_visibility="collapsed"
             )
             
-            selected_variant_name = variant_options[selected_option][0]
-            unit_price = variant_options[selected_option][1]
+            selected_variant = variant_options[selected_idx][0]
+            unit_price = variant_options[selected_idx][1]
+            st.markdown("</div>", unsafe_allow_html=True)
         
         total = unit_price * int(qty)
         
         st.markdown(f"""
-        <div class='order-summary'>
-            <strong>{HEADER_ORDER_SUMMARY}</strong><br>
-            Item: {p['name']}<br>
-            Size/Option: <strong>{selected_variant_name}</strong><br>
-            Unit Price: {CURRENCY_SYMBOL} {unit_price}<br>
-            Quantity: {qty}<br>
-            <strong style='font-size:20px; color:{PRICE_COLOR};'>Total: {CURRENCY_SYMBOL} {total}</strong>
-        </div>
+            <div class='order-summary'>
+                <div class='order-summary-title'>Order Summary</div>
+                <div class='order-summary-row'><span>Product:</span><span>{p['name']}</span></div>
+                <div class='order-summary-row'><span>Variant:</span><span>{selected_variant}</span></div>
+                <div class='order-summary-row'><span>Unit Price:</span><span>{CURRENCY_SYMBOL}{unit_price}</span></div>
+                <div class='order-summary-row'><span>Quantity:</span><span>{qty}</span></div>
+                <div class='order-summary-total'>Total: {CURRENCY_SYMBOL}{total}</div>
+            </div>
         """, unsafe_allow_html=True)
         
-        send = st.form_submit_button(BUTTON_PLACE_ORDER, use_container_width=True)
+        submitted = st.form_submit_button(TEXT_PLACE_ORDER, use_container_width=True)
         
-        if send and name and phone and location:
-            reference = generate_reference(p["name"], location)
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            orders_sheet.append_row([
-                name, phone, location, p["name"],
-                qty, total, reference, timestamp, STATUS_PENDING, selected_variant_name
-            ])
-            
-            # Notifications
-            telegram_msg = f"""
-🛒 <b>New Order!</b>
-
-📦 Product: {p['name']}
-🎯 Size/Option: {selected_variant_name}
-💵 Unit Price: {CURRENCY_SYMBOL} {unit_price}
-👤 Customer: {name}
-📞 Phone: {phone}
-📍 Location: {location}
-🔢 Quantity: {qty}
-💰 Total: {CURRENCY_SYMBOL} {total}
-🔖 Reference: {reference}
-📅 Time: {timestamp}
-            """
-            telegram_sent = send_telegram_notification(telegram_msg)
-            
-            email_subject = f"🛒 New Order: {reference}"
-            email_body = f"""
-            <html><body style='font-family:Arial,sans-serif;'>
-                <h2 style='color:#d97706;'>New Order Received!</h2>
-                <table style='border-collapse:collapse;width:100%;'>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Product:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{p['name']}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Size/Option:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{selected_variant_name}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Unit Price:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{CURRENCY_SYMBOL} {unit_price}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Customer:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{name}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Phone:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{phone}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Location:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{location}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Quantity:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{qty}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Total:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{CURRENCY_SYMBOL} {total}</td></tr>
-                    <tr><td style='padding:10px;border-bottom:1px solid #ddd;'><strong>Reference:</strong></td><td style='padding:10px;border-bottom:1px solid #ddd;'>{reference}</td></tr>
-                </table>
-                <p style='margin-top:20px;color:#666;'>Status: Pending</p>
-            </body></html>
-            """
-            email_sent = send_email_notification(email_subject, email_body)
-            
-            notif_info = []
-            if telegram_sent:
-                notif_info.append("Telegram")
-            if email_sent:
-                notif_info.append("Email")
-            notif_text = f" (Sent via {', '.join(notif_info)})" if notif_info else ""
-            
-            st.markdown(f"""
-            <div class='success-message'>
-                <h3 style='margin:0 0 12px 0;'>✅ {ORDER_SUCCESS_TITLE}{notif_text}</h3>
-                <p style='margin:0; font-size:15px;'>{ORDER_SUCCESS_MESSAGE}</p>
-                <p style='margin:8px 0 0 0;'>Size/Option: <strong>{selected_variant_name}</strong></p>
-                <p style='margin:15px 0 0 0;'><strong style='font-size:18px;'>Total: {CURRENCY_SYMBOL} {total}</strong></p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            del st.session_state.selected
+        if submitted:
+            if not all([name, phone, location]):
+                st.warning("⚠️ Please fill in all required fields")
+            else:
+                loading = st.empty()
+                loading.markdown("""
+                    <div class='loading-overlay'>
+                        <div class='loading-spinner'></div>
+                        <div class='loading-text'>Processing your order...</div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                try:
+                    ref = generate_reference(p["name"], location)
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Save to sheets
+                    client = get_sheets_client()
+                    sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
+                    sheet.append_row([name, phone, location, p["name"], qty, total, ref, timestamp, STATUS_PENDING, selected_variant])
+                    
+                    # Send notifications async
+                    send_notifications_async(
+                        p["name"], selected_variant, name, phone, location, 
+                        qty, total, ref, timestamp
+                    )
+                    
+                    loading.empty()
+                    
+                    st.markdown(f"""
+                        <div class='success-message'>
+                            <div class='success-title'>✅ {ORDER_SUCCESS_TITLE}</div>
+                            <p>Reference: <strong>{ref}</strong></p>
+                            <p>Total: <strong>{CURRENCY_SYMBOL}{total}</strong></p>
+                            <p style='font-size:0.9rem;opacity:0.9;'>{ORDER_SUCCESS_MESSAGE}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if "selected_product" in st.session_state:
+                        del st.session_state.selected_product
+                    
+                    time.sleep(3)
+                    st.rerun()
+                    
+                except Exception as e:
+                    loading.empty()
+                    st.error(f"❌ Error: {str(e)}")
+    
+    if st.button("← Continue Shopping", use_container_width=True):
+        if "selected_product" in st.session_state:
+            del st.session_state.selected_product
+        st.rerun()
     
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ==============================
+# ==========================================
 # FOOTER
-# ==============================
-footer_links_html = " <span style='color:rgba(255,255,255,0.5);'>|</span> ".join([
+# ==========================================
+
+footer_links_html = "".join([
     f"<a href='{link['url']}' class='footer-link'>{link['icon']} {link['text']}</a>"
     for link in FOOTER_LINKS
 ])
 
 st.markdown(f"""
-<div class='footer-section'>
+<div class='footer'>
+    <div class='footer-title'>💎 {STORE_NAME}</div>
     <div class='footer-links'>
         {footer_links_html}
     </div>
     <div class='footer-copyright'>
-        © 2026 {BUSINESS_NAME} • All Rights Reserved
+        {COPYRIGHT_TEXT}
     </div>
 </div>
 """, unsafe_allow_html=True)
