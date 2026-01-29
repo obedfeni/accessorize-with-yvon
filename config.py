@@ -1,94 +1,110 @@
 # ==========================================
-# STORE CONFIGURATION - ACCESSORIZE WITH YVON
+# ACCESSORIZE WITH YVON - STORE CONFIGURATION
+# Professional E-Commerce Configuration
 # ==========================================
 
 # ==========================================
-# STORE INFORMATION
+# STORE IDENTITY
 # ==========================================
 STORE_NAME = "Accessorize with Yvon & Knottycrafts Shop"
 STORE_TAGLINE = "Curated jewelry, beauty & handmade treasures"
 STORE_DESCRIPTION = "High-quality jewelry • Body splashes • Hair accessories • Crocheted fashion"
 
-# Logo settings
-LOGO_TEXT = "AYK"  # Accessorize Yvon
-LOGO_SHAPE = "circle"  # Options: "square", "circle"
+LOGO_TEXT = "AYK"
+LOGO_SHAPE = "circle"  # Options: "circle", "square"
 
 # ==========================================
-# CONTACT INFORMATION
+# CONTACT & SOCIAL
 # ==========================================
 PHONE_NUMBER = "0545651573"
 WHATSAPP_NUMBER = "0545651573"
+SECONDARY_PHONE = "0507262613"
 SNAPCHAT_HANDLE = "@yvonisdark"
+TIKTOK_HANDLE = "@knottycrafts"
 LOCATION = "Accra, Ghana"
 EMAIL = "accessorize@yvon.com"
-TIKTOK_HANDLE = "@knottycrafts"
 
 # ==========================================
-# COLOR SCHEME - Elegant Pink & Gold
+# COLOR SCHEME - Elegant Feminine Pink & Gold
 # ==========================================
 
-# Background colors
-BACKGROUND_COLOR = "#fef3f2"  # Soft pink/peach
-CARD_BACKGROUND = "#ffffff"   # White
+# Background
+BACKGROUND_COLOR = "#fef3f2"      # Soft pink/peach
+CARD_BACKGROUND = "#ffffff"       # Pure white
+SURFACE_COLOR = "#fff5f5"         # Lighter pink surface
 
-# Primary colors (gold/rose gold theme)
-PRIMARY_COLOR = "#d97706"      # Gold/amber
-BUTTON_COLOR = "#f59e0b"       # Golden yellow
-BUTTON_TEXT_COLOR = "#ffffff"  # White text
+# Primary Brand Colors (Gold/Rose Gold)
+PRIMARY_COLOR = "#d97706"         # Rich gold/amber
+PRIMARY_LIGHT = "#f59e0b"         # Golden yellow
+PRIMARY_DARK = "#b45309"          # Dark amber
 
-# Text colors
-TEXT_PRIMARY = "#78350f"       # Dark brown
-TEXT_SECONDARY = "#92400e"     # Medium brown
-PRICE_COLOR = "#dc2626"        # Red
+# Accent Colors
+ACCENT_COLOR = "#ec4899"          # Pink accent
+ACCENT_LIGHT = "#f472b6"          # Light pink
 
-# Navigation bar
-NAV_BACKGROUND = "#ffffff"
-NAV_TEXT_COLOR = "#78350f"
+# Text Colors
+TEXT_PRIMARY = "#78350f"          # Dark brown
+TEXT_SECONDARY = "#92400e"        # Medium brown
+TEXT_MUTED = "#a16207"            # Muted gold
 
-# Footer
-FOOTER_BACKGROUND = "#78350f"  # Dark brown
-FOOTER_TEXT_COLOR = "#ffffff"
+# Status Colors
+PRICE_COLOR = "#dc2626"           # Vibrant red for prices
+SUCCESS_COLOR = "#10b981"         # Emerald green
+WARNING_COLOR = "#f59e0b"         # Amber warning
+ERROR_COLOR = "#ef4444"           # Red error
+
+# UI Elements
+BORDER_COLOR = "#fed7aa"          # Peach border
+SHADOW_COLOR = "rgba(217, 119, 6, 0.15)"  # Gold shadow
 
 # ==========================================
-# CURRENCY
+# CURRENCY SETTINGS
 # ==========================================
 CURRENCY = "GHS"
 CURRENCY_SYMBOL = "GHS"
-
-# ==========================================
-# FEATURE TOGGLES
-# ==========================================
-SHOW_ADMIN_BUTTON = True
-ENABLE_SEARCH = True
-ENABLE_PRODUCT_DESCRIPTION = True
-SHOW_STOCK_BADGE = True
-SHOW_STATISTICS = True
+CURRENCY_POSITION = "before"      # "before" or "after"
 
 # ==========================================
 # PRODUCT DISPLAY
 # ==========================================
 PRODUCTS_PER_ROW = 3
-PRODUCT_IMAGE_HEIGHT = "300px"
-CARD_STYLE = "modern"
+PRODUCTS_PER_ROW_MOBILE = 2
+PRODUCT_IMAGE_QUALITY = "auto:good"
+MAX_PRODUCT_IMAGES = 3
 
 # ==========================================
 # ORDER SETTINGS
 # ==========================================
-REQUIRE_PHONE = True
-REQUIRE_LOCATION = True
 MIN_ORDER_QUANTITY = 1
 MAX_ORDER_QUANTITY = 50
+REQUIRE_PHONE = True
+REQUIRE_LOCATION = True
 
 # ==========================================
-# NOTIFICATION SETTINGS
+# REFERENCE CODE FORMAT
 # ==========================================
-ORDER_SUCCESS_TITLE = "Order Placed Successfully!"
-ORDER_SUCCESS_MESSAGE = "Thank you for your order! We'll contact you via WhatsApp to confirm and arrange delivery."
+REFERENCE_PREFIX = "AYK"
+REFERENCE_LENGTH = 4
 
-TELEGRAM_NOTIFICATION_TEMPLATE = """
+# ==========================================
+# GOOGLE SHEETS CONFIGURATION
+# ==========================================
+SHEET_NAME = "accessorize_with_yvon"
+PRODUCTS_WORKSHEET = "products"
+ORDERS_WORKSHEET = "orders"
+
+# Expected columns
+PRODUCT_COLUMNS = ["id", "name", "price", "stock", "image1", "image2", "image3", "description", "status", "variants"]
+ORDER_COLUMNS = ["name", "phone", "location", "items", "qty", "amount", "reference", "timestamp", "status", "variant"]
+
+# ==========================================
+# NOTIFICATION TEMPLATES
+# ==========================================
+TELEGRAM_TEMPLATE = """
 🛍️ <b>NEW ORDER - ACCESSORIZE WITH YVON</b>
 
 📦 <b>Product:</b> {product_name}
+🎯 <b>Variant:</b> {variant}
 👤 <b>Customer:</b> {customer_name}
 📱 <b>Phone:</b> {phone}
 📍 <b>Location:</b> {location}
@@ -100,66 +116,57 @@ TELEGRAM_NOTIFICATION_TEMPLATE = """
 Status: ⏳ Pending
 """
 
-# ==========================================
-# GOOGLE SHEETS SETTINGS
-# ==========================================
-SHEET_NAME = "accessorize_with_yvon"
-PRODUCTS_WORKSHEET = "products"
-ORDERS_WORKSHEET = "orders"
+ORDER_SUCCESS_TITLE = "Order Placed Successfully!"
+ORDER_SUCCESS_MESSAGE = "Thank you for your order! We'll contact you via WhatsApp to confirm and arrange delivery."
 
 # ==========================================
-# TEXT CUSTOMIZATION
+# UI TEXT CUSTOMIZATION
 # ==========================================
-BUTTON_ADD_TO_CART = "Order Now"
-BUTTON_PLACE_ORDER = "Place Order"
-BUTTON_OUT_OF_STOCK = "Sold Out"
-BUTTON_ADMIN_LOGIN = "Login to Dashboard"
+TEXT_ADD_TO_CART = "Order Now"
+TEXT_PLACE_ORDER = "Place Order"
+TEXT_OUT_OF_STOCK = "Sold Out"
+TEXT_ADMIN_LOGIN = "Login to Dashboard"
+TEXT_FEATURED_PRODUCTS = "Our Collection"
+TEXT_CHECKOUT = "Complete Your Order"
+TEXT_ADMIN_DASHBOARD = "Admin Dashboard"
 
-HEADER_FEATURED_PRODUCTS = "Our Collection"
-HEADER_CHECKOUT = "Complete Your Order"
-HEADER_ORDER_SUMMARY = "Order Summary"
-HEADER_ADMIN_DASHBOARD = "Admin Dashboard"
-
-LABEL_CUSTOMER_NAME = "Your Name"
-LABEL_PHONE = "Phone / WhatsApp"
-LABEL_LOCATION = "Delivery Location"
-LABEL_QUANTITY = "Quantity"
+TEXT_LABEL_NAME = "Your Name"
+TEXT_LABEL_PHONE = "Phone / WhatsApp"
+TEXT_LABEL_LOCATION = "Delivery Location"
+TEXT_LABEL_QUANTITY = "Quantity"
+TEXT_LABEL_VARIANT = "Select Size/Option"
 
 STATUS_IN_STOCK = "In Stock"
 STATUS_OUT_OF_STOCK = "Out of Stock"
 STATUS_PENDING = "Pending"
+STATUS_APPROVED = "Approved"
 
 # ==========================================
-# ADVANCED CUSTOMIZATION
+# FEATURE FLAGS
 # ==========================================
-CUSTOM_CSS = """
-/* Elegant feminine styling */
-.product-card {
-    border: 2px solid #fed7aa !important;
-}
-.product-card:hover {
-    border-color: #f59e0b !important;
-}
-"""
+SHOW_ADMIN_BUTTON = True
+ENABLE_SEARCH = True
+ENABLE_CAROUSEL = True
+SHOW_STOCK_BADGE = True
+SHOW_STATISTICS = True
+ENABLE_VARIANTS = True
 
-# Footer links
+# ==========================================
+# PERFORMANCE SETTINGS
+# ==========================================
+CACHE_TTL_PRODUCTS = 300      # 5 minutes
+CACHE_TTL_ORDERS = 120        # 2 minutes
+IMAGE_CACHE_TTL = 3600        # 1 hour
+
+# ==========================================
+# FOOTER CONFIGURATION
+# ==========================================
 FOOTER_LINKS = [
-    {"icon": "📞", "text": "0545651573 / 0507262613", "url": "tel:0545651573"},
-    {"icon": "👻", "text": f"Snapchat: {SNAPCHAT_HANDLE}", "url": "#"},
-    {"icon": "🎵", "text": f"TikTok: {TIKTOK_HANDLE}", "url": "#"},
+    {"icon": "📞", "text": "0545651573", "url": "tel:0545651573"},
+    {"icon": "📱", "text": "0507262613", "url": "tel:0507262613"},
+    {"icon": "👻", "text": SNAPCHAT_HANDLE, "url": "#"},
+    {"icon": "🎵", "text": TIKTOK_HANDLE, "url": "#"},
     {"icon": "📍", "text": LOCATION, "url": "#"},
 ]
 
-# ==========================================
-# BUSINESS INFORMATION
-# ==========================================
-BUSINESS_NAME = STORE_NAME
-BUSINESS_ADDRESS = f"{LOCATION}"
-BUSINESS_REG_NUMBER = ""
-TAX_ID = ""
-
-# ==========================================
-# REFERENCE CODE FORMAT
-# ==========================================
-REFERENCE_PREFIX = "AYK"  # Accessorize Yvon
-REFERENCE_LENGTH = 4
+COPYRIGHT_TEXT = f"© 2026 {STORE_NAME} • All Rights Reserved"
