@@ -234,7 +234,7 @@ if "page" in st.query_params and st.query_params["page"] == "admin":
     st.session_state.show_admin_login = True
 
 # ==========================================
-# HIDE STREAMLIT BRANDING
+# HIDE STREAMLIT BRANDING - FIXED PADDING
 # ==========================================
 
 st.markdown("""
@@ -246,10 +246,21 @@ st.markdown("""
         visibility: hidden !important;
         opacity: 0 !important;
     }
+    /* FIX: Remove excessive padding that causes huge gaps */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 0 !important;
         max-width: 100% !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    /* FIX: Remove gap between elements */
+    .element-container {
+        margin-bottom: 0.5rem !important;
+    }
+    /* FIX: Tighten up vertical spacing */
+    [data-testid="stVerticalBlock"] {
+        gap: 0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -392,7 +403,7 @@ st.markdown(f"""
         backdrop-filter: blur(20px);
         padding: 1rem 1.5rem;
         border-radius: 0 0 24px 24px;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -487,7 +498,7 @@ st.markdown(f"""
         font-size: 1.5rem;
         font-weight: 800;
         color: {TEXT_PRIMARY};
-        margin: 2rem 0 1.5rem 0;
+        margin: 1.5rem 0 1rem 0;
         text-align: center;
         position: relative;
         display: inline-block;
@@ -501,46 +512,47 @@ st.markdown(f"""
         width: 80px;
         height: 4px;
         background: linear-gradient(90deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT});
-        margin: 0.8rem auto 0;
+        margin: 0.5rem auto 0;
         border-radius: 2px;
     }}
     
     @media (min-width: 768px) {{
         .section-title {{
             font-size: 2rem;
-            margin: 2.5rem 0 2rem 0;
+            margin: 2rem 0 1.5rem 0;
         }}
     }}
     
     /* ==========================================
-       PRODUCT CARDS
+       PRODUCT CARDS - TIGHTENED SPACING
        ========================================== */
     .product-grid {{
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+        gap: 0.8rem;
+        margin-top: 0.5rem;
     }}
     
     @media (min-width: 768px) {{
         .product-grid {{
             grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
+            gap: 1.2rem;
         }}
     }}
     
     .product-card {{
         background: {CARD_BACKGROUND};
-        border-radius: 20px;
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         border: 2px solid {BORDER_COLOR};
         position: relative;
     }}
     
     .product-card:hover {{
-        transform: translateY(-8px);
-        box-shadow: 0 20px 40px {SHADOW_COLOR};
+        transform: translateY(-6px);
+        box-shadow: 0 12px 30px {SHADOW_COLOR};
         border-color: {PRIMARY_COLOR};
     }}
     
@@ -558,7 +570,7 @@ st.markdown(f"""
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 12px;
+        padding: 8px;
     }}
     
     .product-image {{
@@ -568,7 +580,7 @@ st.markdown(f"""
         height: auto;
         object-fit: contain;
         transition: transform 0.3s ease;
-        border-radius: 12px;
+        border-radius: 10px;
     }}
     
     .product-card:hover .product-image {{
@@ -577,16 +589,16 @@ st.markdown(f"""
     
     .stock-badge {{
         position: absolute;
-        top: 12px;
-        right: 12px;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.7rem;
+        top: 8px;
+        right: 8px;
+        padding: 0.4rem 0.8rem;
+        border-radius: 16px;
+        font-size: 0.65rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         z-index: 10;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }}
     
     .badge-in-stock {{
@@ -600,34 +612,16 @@ st.markdown(f"""
     }}
     
     .product-content {{
-        padding: 1.2rem;
+        padding: 1rem;
         background: {CARD_BACKGROUND};
     }}
     
     .product-name {{
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
         line-height: 1.3;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        min-height: 2.6rem;
-    }}
-    
-    @media (min-width: 768px) {{
-        .product-name {{
-            font-size: 1.1rem;
-        }}
-    }}
-    
-    .product-description {{
-        font-size: 0.8rem;
-        color: {TEXT_SECONDARY};
-        line-height: 1.5;
-        margin-bottom: 0.8rem;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -635,42 +629,60 @@ st.markdown(f"""
         min-height: 2.4rem;
     }}
     
+    @media (min-width: 768px) {{
+        .product-name {{
+            font-size: 1.05rem;
+        }}
+    }}
+    
+    .product-description {{
+        font-size: 0.75rem;
+        color: {TEXT_SECONDARY};
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.1rem;
+    }}
+    
     .product-price {{
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         color: {PRICE_COLOR};
         font-weight: 800;
-        margin-bottom: 0.8rem;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
-        gap: 0.3rem;
+        gap: 0.2rem;
     }}
     
     .price-currency {{
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: {TEXT_MUTED};
         font-weight: 600;
     }}
     
     .variant-hint {{
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: {PRIMARY_COLOR};
         font-weight: 600;
-        margin-bottom: 0.8rem;
-        padding: 4px 8px;
+        margin-bottom: 0.5rem;
+        padding: 3px 6px;
         background: {SURFACE_COLOR};
-        border-radius: 6px;
+        border-radius: 4px;
         display: inline-block;
     }}
     
     /* ==========================================
-       CAROUSEL CONTROLS
+       CAROUSEL CONTROLS - COMPACT
        ========================================== */
     .carousel-controls {{
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        padding: 10px;
+        gap: 8px;
+        padding: 6px;
         background: {CARD_BACKGROUND};
         border-top: 1px solid {BORDER_COLOR};
     }}
@@ -678,33 +690,33 @@ st.markdown(f"""
     .carousel-btn {{
         background: linear-gradient(135deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT});
         border: none;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         color: white;
         transition: all 0.2s;
-        box-shadow: 0 2px 8px {SHADOW_COLOR};
+        box-shadow: 0 2px 6px {SHADOW_COLOR};
     }}
     
     .carousel-btn:hover {{
         transform: scale(1.1);
-        box-shadow: 0 4px 12px {SHADOW_COLOR};
+        box-shadow: 0 3px 10px {SHADOW_COLOR};
     }}
     
     .carousel-indicator {{
         color: {TEXT_SECONDARY};
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 700;
-        min-width: 40px;
+        min-width: 35px;
         text-align: center;
         background: {SURFACE_COLOR};
-        padding: 4px 12px;
-        border-radius: 12px;
+        padding: 3px 8px;
+        border-radius: 10px;
     }}
     
     /* ==========================================
@@ -714,12 +726,12 @@ st.markdown(f"""
         background: linear-gradient(135deg, {PRIMARY_LIGHT} 0%, {PRIMARY_COLOR} 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 12px !important;
-        padding: 0.8rem 1.5rem !important;
+        border-radius: 10px !important;
+        padding: 0.7rem 1.2rem !important;
         font-weight: 700 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.85rem !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px {SHADOW_COLOR} !important;
+        box-shadow: 0 3px 12px {SHADOW_COLOR} !important;
         width: 100% !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
@@ -727,7 +739,7 @@ st.markdown(f"""
     
     .stButton > button:hover {{
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px {SHADOW_COLOR} !important;
+        box-shadow: 0 5px 18px {SHADOW_COLOR} !important;
     }}
     
     .stButton > button:disabled {{
@@ -739,10 +751,10 @@ st.markdown(f"""
     
     /* Admin button smaller */
     .admin-btn-container button {{
-        padding: 0.5rem 1rem !important;
-        font-size: 0.8rem !important;
+        padding: 0.4rem 0.8rem !important;
+        font-size: 0.75rem !important;
         width: auto !important;
-        min-width: 100px !important;
+        min-width: 90px !important;
     }}
     
     /* ==========================================
@@ -755,9 +767,9 @@ st.markdown(f"""
         background-color: {CARD_BACKGROUND} !important;
         color: {TEXT_PRIMARY} !important;
         border: 2px solid {BORDER_COLOR} !important;
-        border-radius: 12px !important;
-        padding: 0.9rem 1rem !important;
-        font-size: 1rem !important;
+        border-radius: 10px !important;
+        padding: 0.7rem 0.9rem !important;
+        font-size: 0.95rem !important;
         transition: all 0.3s ease !important;
     }}
     
@@ -765,7 +777,7 @@ st.markdown(f"""
     .stNumberInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {{
         border-color: {PRIMARY_COLOR} !important;
-        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1) !important;
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1) !important;
         outline: none !important;
     }}
     
@@ -775,8 +787,8 @@ st.markdown(f"""
     .stSelectbox > label {{
         color: {TEXT_PRIMARY} !important;
         font-weight: 600 !important;
-        font-size: 0.9rem !important;
-        margin-bottom: 0.4rem !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 0.3rem !important;
     }}
     
     /* ==========================================
@@ -784,34 +796,33 @@ st.markdown(f"""
        ========================================== */
     .admin-card {{
         background: {CARD_BACKGROUND};
-        border-radius: 20px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         border: 2px solid {BORDER_COLOR};
     }}
     
     .stat-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
+        gap: 0.8rem;
+        margin-bottom: 1.5rem;
     }}
     
     @media (min-width: 768px) {{
         .stat-grid {{
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
+            gap: 1.2rem;
         }}
     }}
     
     .stat-box {{
         background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
         color: white;
-        padding: 1.5rem 1rem;
-        border-radius: 16px;
+        padding: 1.2rem 0.8rem;
+        border-radius: 12px;
         text-align: center;
-        box-shadow: 0 10px 25px {SHADOW_COLOR};
+        box-shadow: 0 8px 20px {SHADOW_COLOR};
         transition: transform 0.3s ease;
     }}
     
@@ -820,7 +831,7 @@ st.markdown(f"""
     }}
     
     .stat-number {{
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
         line-height: 1;
@@ -828,12 +839,12 @@ st.markdown(f"""
     
     @media (min-width: 768px) {{
         .stat-number {{
-            font-size: 2.2rem;
+            font-size: 2rem;
         }}
     }}
     
     .stat-label {{
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         opacity: 0.95;
         font-weight: 600;
         text-transform: uppercase;
@@ -841,55 +852,55 @@ st.markdown(f"""
     }}
     
     /* ==========================================
-       ORDER FORM & CHECKOUT
+       ORDER FORM & CHECKOUT - COMPACT
        ========================================== */
     .order-container {{
         background: {CARD_BACKGROUND};
-        border-radius: 24px;
-        padding: 2rem 1.5rem;
-        margin: 2rem 0;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        border-radius: 20px;
+        padding: 1.5rem 1.2rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
         border: 2px solid {BORDER_COLOR};
     }}
     
     @media (min-width: 768px) {{
         .order-container {{
-            padding: 2.5rem;
-            margin: 3rem 0;
+            padding: 2rem;
+            margin: 2rem 0;
         }}
     }}
     
     .order-summary {{
         background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
         border: 2px solid {BORDER_COLOR};
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
+        border-radius: 12px;
+        padding: 1.2rem;
+        margin: 1rem 0;
     }}
     
     .order-summary-title {{
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.4rem;
         border-bottom: 2px solid {BORDER_COLOR};
     }}
     
     .order-summary-row {{
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.95rem;
+        margin-bottom: 0.4rem;
+        font-size: 0.9rem;
         color: {TEXT_SECONDARY};
     }}
     
     .order-summary-total {{
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 800;
         color: {PRICE_COLOR};
-        margin-top: 1rem;
-        padding-top: 1rem;
+        margin-top: 0.8rem;
+        padding-top: 0.8rem;
         border-top: 2px solid {BORDER_COLOR};
     }}
     
@@ -897,16 +908,16 @@ st.markdown(f"""
     .variant-selector {{
         background: {SURFACE_COLOR};
         border: 2px solid {BORDER_COLOR};
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin: 0.8rem 0;
     }}
     
     .variant-label {{
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 0.8rem;
+        margin-bottom: 0.6rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }}
@@ -918,11 +929,11 @@ st.markdown(f"""
         background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
         border: 2px solid {SUCCESS_COLOR};
         color: #065f46;
-        padding: 2rem;
-        border-radius: 20px;
-        margin: 2rem 0;
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin: 1.5rem 0;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
         position: relative;
         overflow: hidden;
     }}
@@ -932,12 +943,12 @@ st.markdown(f"""
         position: absolute;
         top: -10px;
         right: -10px;
-        font-size: 80px;
+        font-size: 60px;
         opacity: 0.2;
     }}
     
     .success-title {{
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         font-weight: 800;
         margin-bottom: 0.5rem;
         position: relative;
@@ -963,8 +974,8 @@ st.markdown(f"""
     }}
     
     .loading-spinner {{
-        width: 60px;
-        height: 60px;
+        width: 50px;
+        height: 50px;
         border: 4px solid {BORDER_COLOR};
         border-top: 4px solid {PRIMARY_COLOR};
         border-radius: 50%;
@@ -977,29 +988,29 @@ st.markdown(f"""
     }}
     
     .loading-text {{
-        margin-top: 1.5rem;
-        font-size: 1.1rem;
+        margin-top: 1rem;
+        font-size: 1rem;
         color: {PRIMARY_COLOR};
         font-weight: 700;
     }}
     
     /* ==========================================
-       FOOTER - ELEGANT
+       FOOTER - COMPACT
        ========================================== */
     .footer {{
         background: linear-gradient(135deg, {TEXT_PRIMARY} 0%, {TEXT_SECONDARY} 100%);
         color: white;
-        padding: 3rem 1.5rem;
-        border-radius: 24px 24px 0 0;
-        margin-top: 4rem;
+        padding: 2rem 1rem;
+        border-radius: 20px 20px 0 0;
+        margin-top: 3rem;
         text-align: center;
-        border-top: 4px solid {PRIMARY_COLOR};
+        border-top: 3px solid {PRIMARY_COLOR};
     }}
     
     .footer-title {{
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         font-weight: 700;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         color: white;
         font-family: 'Playfair Display', serif;
     }}
@@ -1008,19 +1019,19 @@ st.markdown(f"""
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
+        gap: 1rem;
+        margin-bottom: 1rem;
     }}
     
     .footer-link {{
         color: rgba(255,255,255,0.9);
         text-decoration: none;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 500;
         transition: all 0.3s;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
     }}
     
     .footer-link:hover {{
@@ -1029,10 +1040,10 @@ st.markdown(f"""
     }}
     
     .footer-copyright {{
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         opacity: 0.7;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
         border-top: 1px solid rgba(255,255,255,0.2);
     }}
     
@@ -1041,9 +1052,9 @@ st.markdown(f"""
        ========================================== */
     .status-badge {{
         display: inline-block;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -1058,15 +1069,15 @@ st.markdown(f"""
     }}
     
     /* ==========================================
-       ADMIN LOGIN
+       ADMIN LOGIN - COMPACT
        ========================================== */
     .admin-login-box {{
         max-width: 400px;
-        margin: 3rem auto;
+        margin: 2rem auto;
         background: {CARD_BACKGROUND};
-        border-radius: 24px;
-        padding: 2.5rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.1);
         border: 2px solid {BORDER_COLOR};
     }}
     
@@ -1074,10 +1085,10 @@ st.markdown(f"""
     .info-box {{
         background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
         border: 2px solid {BORDER_COLOR};
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        margin: 1rem 0;
-        font-size: 0.9rem;
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        margin: 0.8rem 0;
+        font-size: 0.85rem;
         color: {TEXT_SECONDARY};
     }}
     
@@ -1091,6 +1102,11 @@ st.markdown(f"""
         background: linear-gradient(135deg, #fef3c7, #fde68a);
         border-color: {WARNING_COLOR};
         color: #92400e;
+    }}
+    
+    /* Search bar compact */
+    [data-testid="stTextInput"] {{
+        margin-bottom: 0.5rem !important;
     }}
 </style>
 
@@ -1437,13 +1453,13 @@ st.markdown(f"<div class='section-title'>{TEXT_FEATURED_PRODUCTS}</div>", unsafe
 if products_df.empty:
     st.info("✨ New arrivals coming soon! Check back later.")
 else:
-    # Search
+    # Search - COMPACT SPACING
     if ENABLE_SEARCH:
         search_term = st.text_input("🔍 Search products...", placeholder="Search jewelry, accessories...", label_visibility="collapsed")
         if search_term:
             products_df = products_df[products_df['name'].str.contains(search_term, case=False, na=False)]
     
-    # Product Grid
+    # Product Grid - TIGHTENED GAP
     st.markdown("<div class='product-grid'>", unsafe_allow_html=True)
     
     for idx, row in products_df.iterrows():
@@ -1552,7 +1568,7 @@ if st.session_state.selected_product is not None:
     
     st.markdown("<div class='order-container'>", unsafe_allow_html=True)
     st.markdown(f"### {TEXT_CHECKOUT}")
-    st.markdown(f"<p style='color:{TEXT_SECONDARY};margin-bottom:1.5rem;'><strong>Product:</strong> {p['name']}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{TEXT_SECONDARY};margin-bottom:1rem;'><strong>Product:</strong> {p['name']}</p>", unsafe_allow_html=True)
     
     # Parse variants
     variants_dict = {}
