@@ -1778,7 +1778,7 @@ if st.session_state.selected_product is not None:
                     # FIX: Properly clear selected product
                     st.session_state.selected_product = None
                     
-                    time.sleep(3)
+                    time.sleep(15)
                     st.rerun()
                     
                 except Exception as e:
