@@ -234,7 +234,7 @@ if "page" in st.query_params and st.query_params["page"] == "admin":
     st.session_state.show_admin_login = True
 
 # ==========================================
-# HIDE STREAMLIT BRANDING - AGGRESSIVE SPACING FIX
+# HIDE STREAMLIT BRANDING - FIX GAP ISSUES
 # ==========================================
 
 st.markdown("""
@@ -249,16 +249,17 @@ st.markdown("""
     }
     
     /* ==========================================
-       AGGRESSIVE SPACING FIXES - Remove huge gaps
+       CRITICAL FIX: Remove gap between search and products
+       BUT keep product card spacing comfortable
        ========================================== */
     
-    /* Main block container - remove top padding */
+    /* Main container padding fix */
     .stAppViewBlockContainer {
         padding-top: 0.5rem !important;
         padding-bottom: 0 !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
-        gap: 0.5rem !important;
+        gap: 0rem !important;
     }
     
     /* Block container (older versions) */
@@ -270,18 +271,22 @@ st.markdown("""
         max-width: 100% !important;
     }
     
-    /* Remove gap between vertical blocks - THIS IS THE KEY FIX */
+    /* ==========================================
+       FIX: Remove gap between search bar and products
+       ========================================== */
+    
+    /* Remove gap from vertical block - the main culprit */
     [data-testid="stVerticalBlock"] {
         gap: 0rem !important;
     }
     
-    /* Remove gap between elements */
+    /* Remove gap between elements in vertical block */
     [data-testid="stVerticalBlock"] > div {
         margin-bottom: 0rem !important;
         padding-bottom: 0rem !important;
     }
     
-    /* Element container - tighten up */
+    /* Element container - remove all margins */
     .element-container {
         margin-bottom: 0rem !important;
         padding-bottom: 0rem !important;
@@ -293,19 +298,59 @@ st.markdown("""
         padding-bottom: 0rem !important;
     }
     
-    /* Horizontal block gap fix */
-    [data-testid="stHorizontalBlock"] {
-        gap: 0.5rem !important;
+    /* ==========================================
+       SPECIFIC FIX: Search bar spacing
+       ========================================== */
+    
+    /* Remove margin from text input container */
+    div[data-testid="stTextInput"] {
+        margin-bottom: 0rem !important;
+        padding-bottom: 0rem !important;
     }
     
-    /* Remove extra space from markdown containers */
-    .stMarkdown {
+    /* Remove margin from text input element */
+    div[data-testid="stTextInput"] > div {
         margin-bottom: 0rem !important;
     }
     
-    /* Tighten up text input margins */
-    [data-testid="stTextInput"] {
-        margin-bottom: 0.5rem !important;
+    /* Fix the input field itself */
+    div[data-baseweb="input"] {
+        margin-bottom: 0rem !important;
+    }
+    
+    /* ==========================================
+       SPECIFIC FIX: Markdown spacing (the line issue)
+       ========================================== */
+    
+    /* Remove margin from all markdown containers */
+    .stMarkdown {
+        margin-bottom: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Remove margin from markdown text */
+    .stMarkdown > div {
+        margin-bottom: 0rem !important;
+    }
+    
+    /* ==========================================
+       SPECIFIC FIX: Product grid spacing
+       ========================================== */
+    
+    /* Remove top margin from product grid */
+    div[data-testid="stHorizontalBlock"] {
+        margin-top: 0rem !important;
+        padding-top: 0rem !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* ==========================================
+       GENERAL SPACING FIXES
+       ========================================== */
+    
+    /* Horizontal block gap fix */
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
     }
     
     /* Fix column spacing */
@@ -320,8 +365,13 @@ st.markdown("""
     
     /* Fix main block container gap */
     div[data-testid="stMainBlockContainer"] {
-        gap: 0.5rem !important;
+        gap: 0rem !important;
         padding-top: 0.5rem !important;
+    }
+    
+    /* Tighten up text input margins */
+    [data-testid="stTextInput"] {
+        margin-bottom: 0rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -559,7 +609,7 @@ st.markdown(f"""
         font-size: 1.5rem;
         font-weight: 800;
         color: {TEXT_PRIMARY};
-        margin: 1rem 0 0.5rem 0;
+        margin: 0.5rem 0 0.5rem 0;
         text-align: center;
         position: relative;
         display: inline-block;
@@ -580,40 +630,40 @@ st.markdown(f"""
     @media (min-width: 768px) {{
         .section-title {{
             font-size: 2rem;
-            margin: 1.5rem 0 1rem 0;
+            margin: 1rem 0 0.5rem 0;
         }}
     }}
     
     /* ==========================================
-       PRODUCT CARDS - TIGHTENED SPACING
+       PRODUCT CARDS - RESTORED COMFORTABLE SPACING
        ========================================== */
     .product-grid {{
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.8rem;
-        margin-top: 0.5rem;
+        gap: 1rem;
+        margin-top: 0rem !important;
     }}
     
     @media (min-width: 768px) {{
         .product-grid {{
             grid-template-columns: repeat(3, 1fr);
-            gap: 1.2rem;
+            gap: 1.5rem;
         }}
     }}
     
     .product-card {{
         background: {CARD_BACKGROUND};
-        border-radius: 16px;
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 20px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         border: 2px solid {BORDER_COLOR};
         position: relative;
     }}
     
     .product-card:hover {{
-        transform: translateY(-6px);
-        box-shadow: 0 12px 30px {SHADOW_COLOR};
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px {SHADOW_COLOR};
         border-color: {PRIMARY_COLOR};
     }}
     
@@ -631,7 +681,7 @@ st.markdown(f"""
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 8px;
+        padding: 12px;
     }}
     
     .product-image {{
@@ -641,7 +691,7 @@ st.markdown(f"""
         height: auto;
         object-fit: contain;
         transition: transform 0.3s ease;
-        border-radius: 10px;
+        border-radius: 12px;
     }}
     
     .product-card:hover .product-image {{
@@ -650,16 +700,16 @@ st.markdown(f"""
     
     .stock-badge {{
         position: absolute;
-        top: 8px;
-        right: 8px;
-        padding: 0.4rem 0.8rem;
-        border-radius: 16px;
-        font-size: 0.65rem;
+        top: 12px;
+        right: 12px;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         z-index: 10;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }}
     
     .badge-in-stock {{
@@ -672,17 +722,38 @@ st.markdown(f"""
         color: white;
     }}
     
+    /* RESTORED: Comfortable padding for product content */
     .product-content {{
-        padding: 1rem;
+        padding: 1.2rem;
         background: {CARD_BACKGROUND};
     }}
     
+    /* RESTORED: Proper spacing for product name */
     .product-name {{
-        font-size: 0.95rem;
+        font-size: 1rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.5rem;
         line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.6rem;
+    }}
+    
+    @media (min-width: 768px) {{
+        .product-name {{
+            font-size: 1.1rem;
+        }}
+    }}
+    
+    /* RESTORED: Proper spacing for description */
+    .product-description {{
+        font-size: 0.8rem;
+        color: {TEXT_SECONDARY};
+        line-height: 1.5;
+        margin-bottom: 0.8rem;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -690,60 +761,44 @@ st.markdown(f"""
         min-height: 2.4rem;
     }}
     
-    @media (min-width: 768px) {{
-        .product-name {{
-            font-size: 1.05rem;
-        }}
-    }}
-    
-    .product-description {{
-        font-size: 0.75rem;
-        color: {TEXT_SECONDARY};
-        line-height: 1.4;
-        margin-bottom: 0.5rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        min-height: 2.1rem;
-    }}
-    
+    /* RESTORED: Proper spacing for price */
     .product-price {{
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         color: {PRICE_COLOR};
         font-weight: 800;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
         display: flex;
         align-items: center;
-        gap: 0.2rem;
+        gap: 0.3rem;
     }}
     
     .price-currency {{
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         color: {TEXT_MUTED};
         font-weight: 600;
     }}
     
+    /* RESTORED: Proper spacing for variant hint */
     .variant-hint {{
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         color: {PRIMARY_COLOR};
         font-weight: 600;
-        margin-bottom: 0.5rem;
-        padding: 3px 6px;
+        margin-bottom: 0.8rem;
+        padding: 4px 8px;
         background: {SURFACE_COLOR};
-        border-radius: 4px;
+        border-radius: 6px;
         display: inline-block;
     }}
     
     /* ==========================================
-       CAROUSEL CONTROLS - COMPACT
+       CAROUSEL CONTROLS - RESTORED
        ========================================== */
     .carousel-controls {{
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        padding: 6px;
+        gap: 12px;
+        padding: 10px;
         background: {CARD_BACKGROUND};
         border-top: 1px solid {BORDER_COLOR};
     }}
@@ -751,33 +806,33 @@ st.markdown(f"""
     .carousel-btn {{
         background: linear-gradient(135deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT});
         border: none;
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         color: white;
         transition: all 0.2s;
-        box-shadow: 0 2px 6px {SHADOW_COLOR};
+        box-shadow: 0 2px 8px {SHADOW_COLOR};
     }}
     
     .carousel-btn:hover {{
         transform: scale(1.1);
-        box-shadow: 0 3px 10px {SHADOW_COLOR};
+        box-shadow: 0 4px 12px {SHADOW_COLOR};
     }}
     
     .carousel-indicator {{
         color: {TEXT_SECONDARY};
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 700;
-        min-width: 35px;
+        min-width: 40px;
         text-align: center;
         background: {SURFACE_COLOR};
-        padding: 3px 8px;
-        border-radius: 10px;
+        padding: 4px 12px;
+        border-radius: 12px;
     }}
     
     /* ==========================================
@@ -787,12 +842,12 @@ st.markdown(f"""
         background: linear-gradient(135deg, {PRIMARY_LIGHT} 0%, {PRIMARY_COLOR} 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 10px !important;
-        padding: 0.7rem 1.2rem !important;
+        border-radius: 12px !important;
+        padding: 0.8rem 1.5rem !important;
         font-weight: 700 !important;
-        font-size: 0.85rem !important;
+        font-size: 0.9rem !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 3px 12px {SHADOW_COLOR} !important;
+        box-shadow: 0 4px 15px {SHADOW_COLOR} !important;
         width: 100% !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
@@ -800,7 +855,7 @@ st.markdown(f"""
     
     .stButton > button:hover {{
         transform: translateY(-2px) !important;
-        box-shadow: 0 5px 18px {SHADOW_COLOR} !important;
+        box-shadow: 0 6px 20px {SHADOW_COLOR} !important;
     }}
     
     .stButton > button:disabled {{
@@ -812,10 +867,10 @@ st.markdown(f"""
     
     /* Admin button smaller */
     .admin-btn-container button {{
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.75rem !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem !important;
         width: auto !important;
-        min-width: 90px !important;
+        min-width: 100px !important;
     }}
     
     /* ==========================================
@@ -828,9 +883,9 @@ st.markdown(f"""
         background-color: {CARD_BACKGROUND} !important;
         color: {TEXT_PRIMARY} !important;
         border: 2px solid {BORDER_COLOR} !important;
-        border-radius: 10px !important;
-        padding: 0.7rem 0.9rem !important;
-        font-size: 0.95rem !important;
+        border-radius: 12px !important;
+        padding: 0.9rem 1rem !important;
+        font-size: 1rem !important;
         transition: all 0.3s ease !important;
     }}
     
@@ -838,7 +893,7 @@ st.markdown(f"""
     .stNumberInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {{
         border-color: {PRIMARY_COLOR} !important;
-        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1) !important;
+        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1) !important;
         outline: none !important;
     }}
     
@@ -848,8 +903,8 @@ st.markdown(f"""
     .stSelectbox > label {{
         color: {TEXT_PRIMARY} !important;
         font-weight: 600 !important;
-        font-size: 0.85rem !important;
-        margin-bottom: 0.3rem !important;
+        font-size: 0.9rem !important;
+        margin-bottom: 0.4rem !important;
     }}
     
     /* ==========================================
@@ -857,33 +912,33 @@ st.markdown(f"""
        ========================================== */
     .admin-card {{
         background: {CARD_BACKGROUND};
-        border-radius: 16px;
-        padding: 1.2rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 2px solid {BORDER_COLOR};
     }}
     
     .stat-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 0.8rem;
-        margin-bottom: 1.5rem;
+        gap: 1rem;
+        margin-bottom: 2rem;
     }}
     
     @media (min-width: 768px) {{
         .stat-grid {{
-            gap: 1.2rem;
+            gap: 1.5rem;
         }}
     }}
     
     .stat-box {{
         background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
         color: white;
-        padding: 1.2rem 0.8rem;
-        border-radius: 12px;
+        padding: 1.5rem 1rem;
+        border-radius: 16px;
         text-align: center;
-        box-shadow: 0 8px 20px {SHADOW_COLOR};
+        box-shadow: 0 10px 25px {SHADOW_COLOR};
         transition: transform 0.3s ease;
     }}
     
@@ -892,7 +947,7 @@ st.markdown(f"""
     }}
     
     .stat-number {{
-        font-size: 1.6rem;
+        font-size: 1.8rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
         line-height: 1;
@@ -900,12 +955,12 @@ st.markdown(f"""
     
     @media (min-width: 768px) {{
         .stat-number {{
-            font-size: 2rem;
+            font-size: 2.2rem;
         }}
     }}
     
     .stat-label {{
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         opacity: 0.95;
         font-weight: 600;
         text-transform: uppercase;
@@ -913,55 +968,55 @@ st.markdown(f"""
     }}
     
     /* ==========================================
-       ORDER FORM & CHECKOUT - COMPACT
+       ORDER FORM & CHECKOUT - RESTORED
        ========================================== */
     .order-container {{
         background: {CARD_BACKGROUND};
-        border-radius: 20px;
-        padding: 1.5rem 1.2rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        border-radius: 24px;
+        padding: 2rem 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
         border: 2px solid {BORDER_COLOR};
     }}
     
     @media (min-width: 768px) {{
         .order-container {{
-            padding: 2rem;
-            margin: 2rem 0;
+            padding: 2.5rem;
+            margin: 3rem 0;
         }}
     }}
     
     .order-summary {{
         background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
         border: 2px solid {BORDER_COLOR};
-        border-radius: 12px;
-        padding: 1.2rem;
-        margin: 1rem 0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
     }}
     
     .order-summary-title {{
-        font-size: 1rem;
+        font-size: 1.1rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 0.8rem;
-        padding-bottom: 0.4rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
         border-bottom: 2px solid {BORDER_COLOR};
     }}
     
     .order-summary-row {{
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.4rem;
-        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
         color: {TEXT_SECONDARY};
     }}
     
     .order-summary-total {{
-        font-size: 1.3rem;
+        font-size: 1.5rem;
         font-weight: 800;
         color: {PRICE_COLOR};
-        margin-top: 0.8rem;
-        padding-top: 0.8rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
         border-top: 2px solid {BORDER_COLOR};
     }}
     
@@ -969,32 +1024,32 @@ st.markdown(f"""
     .variant-selector {{
         background: {SURFACE_COLOR};
         border: 2px solid {BORDER_COLOR};
-        border-radius: 10px;
-        padding: 0.8rem;
-        margin: 0.8rem 0;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
     }}
     
     .variant-label {{
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 700;
         color: {TEXT_PRIMARY};
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }}
     
     /* ==========================================
-       SUCCESS MESSAGE
+       SUCCESS MESSAGE - RESTORED
        ========================================== */
     .success-message {{
         background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
         border: 2px solid {SUCCESS_COLOR};
         color: #065f46;
-        padding: 1.5rem;
-        border-radius: 16px;
-        margin: 1.5rem 0;
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 2rem 0;
         text-align: center;
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
         position: relative;
         overflow: hidden;
     }}
@@ -1004,12 +1059,12 @@ st.markdown(f"""
         position: absolute;
         top: -10px;
         right: -10px;
-        font-size: 60px;
+        font-size: 80px;
         opacity: 0.2;
     }}
     
     .success-title {{
-        font-size: 1.3rem;
+        font-size: 1.5rem;
         font-weight: 800;
         margin-bottom: 0.5rem;
         position: relative;
@@ -1017,7 +1072,7 @@ st.markdown(f"""
     }}
     
     /* ==========================================
-       LOADING OVERLAY
+       LOADING OVERLAY - RESTORED
        ========================================== */
     .loading-overlay {{
         position: fixed;
@@ -1035,8 +1090,8 @@ st.markdown(f"""
     }}
     
     .loading-spinner {{
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
         border: 4px solid {BORDER_COLOR};
         border-top: 4px solid {PRIMARY_COLOR};
         border-radius: 50%;
@@ -1049,29 +1104,29 @@ st.markdown(f"""
     }}
     
     .loading-text {{
-        margin-top: 1rem;
-        font-size: 1rem;
+        margin-top: 1.5rem;
+        font-size: 1.1rem;
         color: {PRIMARY_COLOR};
         font-weight: 700;
     }}
     
     /* ==========================================
-       FOOTER - COMPACT
+       FOOTER - RESTORED
        ========================================== */
     .footer {{
         background: linear-gradient(135deg, {TEXT_PRIMARY} 0%, {TEXT_SECONDARY} 100%);
         color: white;
-        padding: 2rem 1rem;
-        border-radius: 20px 20px 0 0;
-        margin-top: 3rem;
+        padding: 3rem 1.5rem;
+        border-radius: 24px 24px 0 0;
+        margin-top: 4rem;
         text-align: center;
-        border-top: 3px solid {PRIMARY_COLOR};
+        border-top: 4px solid {PRIMARY_COLOR};
     }}
     
     .footer-title {{
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         font-weight: 700;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
         color: white;
         font-family: 'Playfair Display', serif;
     }}
@@ -1080,19 +1135,19 @@ st.markdown(f"""
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
     }}
     
     .footer-link {{
         color: rgba(255,255,255,0.9);
         text-decoration: none;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 500;
         transition: all 0.3s;
         display: flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
     }}
     
     .footer-link:hover {{
@@ -1101,10 +1156,10 @@ st.markdown(f"""
     }}
     
     .footer-copyright {{
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         opacity: 0.7;
-        margin-top: 1rem;
-        padding-top: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
         border-top: 1px solid rgba(255,255,255,0.2);
     }}
     
@@ -1113,9 +1168,9 @@ st.markdown(f"""
        ========================================== */
     .status-badge {{
         display: inline-block;
-        padding: 3px 10px;
-        border-radius: 10px;
-        font-size: 0.7rem;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -1130,15 +1185,15 @@ st.markdown(f"""
     }}
     
     /* ==========================================
-       ADMIN LOGIN - COMPACT
+       ADMIN LOGIN - RESTORED
        ========================================== */
     .admin-login-box {{
         max-width: 400px;
-        margin: 2rem auto;
+        margin: 3rem auto;
         background: {CARD_BACKGROUND};
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+        border-radius: 24px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
         border: 2px solid {BORDER_COLOR};
     }}
     
@@ -1146,10 +1201,10 @@ st.markdown(f"""
     .info-box {{
         background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
         border: 2px solid {BORDER_COLOR};
-        border-radius: 10px;
-        padding: 0.8rem 1rem;
-        margin: 0.8rem 0;
-        font-size: 0.85rem;
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-size: 0.9rem;
         color: {TEXT_SECONDARY};
     }}
     
@@ -1515,7 +1570,7 @@ else:
         if search_term:
             products_df = products_df[products_df['name'].str.contains(search_term, case=False, na=False)]
     
-    # Product Grid - TIGHTENED GAP
+    # Product Grid - RESTORED GAP
     st.markdown("<div class='product-grid'>", unsafe_allow_html=True)
     
     for idx, row in products_df.iterrows():
@@ -1583,7 +1638,7 @@ else:
                     st.session_state.carousel_indices[carousel_key] = new_idx
                     st.rerun()
         
-        # Product Info
+        # Product Info - RESTORED COMFORTABLE SPACING
         st.markdown(f"""
             <div class='product-content'>
                 <div class='product-name'>{row['name']}</div>
