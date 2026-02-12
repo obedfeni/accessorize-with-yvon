@@ -234,11 +234,12 @@ if "page" in st.query_params and st.query_params["page"] == "admin":
     st.session_state.show_admin_login = True
 
 # ==========================================
-# HIDE STREAMLIT BRANDING - FIXED PADDING
+# HIDE STREAMLIT BRANDING - AGGRESSIVE SPACING FIX
 # ==========================================
 
 st.markdown("""
 <style>
+    /* Hide Streamlit branding */
     #MainMenu, footer, header, .stDeployButton,
     .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_,
     [data-testid="stToolbar"], [data-testid="stDecoration"] {
@@ -246,21 +247,81 @@ st.markdown("""
         visibility: hidden !important;
         opacity: 0 !important;
     }
-    /* FIX: Remove excessive padding that causes huge gaps */
+    
+    /* ==========================================
+       AGGRESSIVE SPACING FIXES - Remove huge gaps
+       ========================================== */
+    
+    /* Main block container - remove top padding */
+    .stAppViewBlockContainer {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0 !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Block container (older versions) */
     .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 0 !important;
-        max-width: 100% !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
+        max-width: 100% !important;
     }
-    /* FIX: Remove gap between elements */
+    
+    /* Remove gap between vertical blocks - THIS IS THE KEY FIX */
+    [data-testid="stVerticalBlock"] {
+        gap: 0rem !important;
+    }
+    
+    /* Remove gap between elements */
+    [data-testid="stVerticalBlock"] > div {
+        margin-bottom: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Element container - tighten up */
     .element-container {
+        margin-bottom: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Fix gap between specific elements */
+    div[data-testid="stElementContainer"] {
+        margin-bottom: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* Horizontal block gap fix */
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
+    }
+    
+    /* Remove extra space from markdown containers */
+    .stMarkdown {
+        margin-bottom: 0rem !important;
+    }
+    
+    /* Tighten up text input margins */
+    [data-testid="stTextInput"] {
         margin-bottom: 0.5rem !important;
     }
-    /* FIX: Tighten up vertical spacing */
-    [data-testid="stVerticalBlock"] {
+    
+    /* Fix column spacing */
+    [data-testid="stColumn"] {
         gap: 0.5rem !important;
+    }
+    
+    /* Remove gap from main section */
+    section[data-testid="stMain"] {
+        gap: 0rem !important;
+    }
+    
+    /* Fix main block container gap */
+    div[data-testid="stMainBlockContainer"] {
+        gap: 0.5rem !important;
+        padding-top: 0.5rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -403,7 +464,7 @@ st.markdown(f"""
         backdrop-filter: blur(20px);
         padding: 1rem 1.5rem;
         border-radius: 0 0 24px 24px;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -498,7 +559,7 @@ st.markdown(f"""
         font-size: 1.5rem;
         font-weight: 800;
         color: {TEXT_PRIMARY};
-        margin: 1.5rem 0 1rem 0;
+        margin: 1rem 0 0.5rem 0;
         text-align: center;
         position: relative;
         display: inline-block;
@@ -519,7 +580,7 @@ st.markdown(f"""
     @media (min-width: 768px) {{
         .section-title {{
             font-size: 2rem;
-            margin: 2rem 0 1.5rem 0;
+            margin: 1.5rem 0 1rem 0;
         }}
     }}
     
@@ -1102,11 +1163,6 @@ st.markdown(f"""
         background: linear-gradient(135deg, #fef3c7, #fde68a);
         border-color: {WARNING_COLOR};
         color: #92400e;
-    }}
-    
-    /* Search bar compact */
-    [data-testid="stTextInput"] {{
-        margin-bottom: 0.5rem !important;
     }}
 </style>
 
