@@ -21,7 +21,7 @@ WHATSAPP_NUMBER = "0545651573"
 SECONDARY_PHONE = "0507262613"
 SNAPCHAT_HANDLE = "@yvonisdark"
 TIKTOK_HANDLE = "@knottycrafts"
-LOCATION = "Accra, Ghana"
+LOCATION = "New Abirem,Eastern Region, Ghana"
 EMAIL = "accessorize@yvon.com"
 
 # ==========================================
