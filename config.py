@@ -1,5 +1,6 @@
-# ==========================================
-# ACCESSORIZE WITH YVON - STORE CONFIGURATION
+
+config_content = '''# ==========================================
+# ACCESSORIZE WITH YVON - CONFIGURATION
 # Professional E-Commerce Configuration
 # ==========================================
 
@@ -21,7 +22,7 @@ WHATSAPP_NUMBER = "0545651573"
 SECONDARY_PHONE = "0507262613"
 SNAPCHAT_HANDLE = "@yvonisdark"
 TIKTOK_HANDLE = "@knottycrafts"
-LOCATION = "New Abirem,Eastern Region, Ghana"
+LOCATION = "New Abirem, Eastern Region, Ghana"
 EMAIL = "accessorize@yvon.com"
 
 # ==========================================
@@ -170,3 +171,6 @@ FOOTER_LINKS = [
 ]
 
 COPYRIGHT_TEXT = f"© 2026 {STORE_NAME} • All Rights Reserved"
+'''
+
+
