@@ -1,5 +1,5 @@
 
-config_content = '''# ==========================================
+
 # ACCESSORIZE WITH YVON - CONFIGURATION
 # Professional E-Commerce Configuration
 # ==========================================
@@ -171,6 +171,6 @@ FOOTER_LINKS = [
 ]
 
 COPYRIGHT_TEXT = f"© 2026 {STORE_NAME} • All Rights Reserved"
-'''
+
 
 
