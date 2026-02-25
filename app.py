@@ -160,116 +160,123 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Continue CSS
+# ==========================================
+# CSS PART 2 — Product grid & cards
+# NOTE: Using .format() instead of % formatting.
+#       All literal CSS curly braces are doubled {{ }}.
+#       No % characters appear in this block so no escaping needed.
+# ==========================================
+
 css_part2 = """
-    .section-title {
+<style>
+    .section-title {{
         font-size: 1.8rem;
         font-weight: 800;
-        color: %s;
+        color: {TEXT_PRIMARY};
         margin: 2rem 0 1.5rem 0;
         text-align: center;
         position: relative;
         font-family: 'Playfair Display', serif;
-    }
+    }}
 
-    .section-title::after {
+    .section-title::after {{
         content: '';
         display: block;
         width: 100px;
         height: 4px;
-        background: linear-gradient(90deg, %s, %s, %s);
+        background: linear-gradient(90deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT}, {ACCENT_COLOR});
         margin: 1rem auto 0;
         border-radius: 2px;
-    }
+    }}
 
-    @media (min-width: 768px) {
-        .section-title { font-size: 2.5rem; margin: 3rem 0 2rem 0; }
-    }
+    @media (min-width: 768px) {{
+        .section-title {{ font-size: 2.5rem; margin: 3rem 0 2rem 0; }}
+    }}
 
-    .product-grid {
+    .product-grid {{
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 1.2rem;
         perspective: 1000px;
-    }
+    }}
 
-    @media (min-width: 768px) {
-        .product-grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-    }
+    @media (min-width: 768px) {{
+        .product-grid {{ grid-template-columns: repeat(3, 1fr); gap: 2rem; }}
+    }}
 
-    .product-card {
-        background: %s;
+    .product-card {{
+        background: {CARD_BACKGROUND};
         border-radius: 24px;
         overflow: hidden;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.1);
         transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-        border: 2px solid %s;
+        border: 2px solid {BORDER_COLOR};
         position: relative;
         transform-style: preserve-3d;
-    }
+    }}
 
-    .product-card:hover {
+    .product-card:hover {{
         transform: translateY(-12px) scale(1.02);
-        box-shadow: 0 30px 60px %s, 0 0 0 2px %s;
-        border-color: %s;
-    }
+        box-shadow: 0 30px 60px {SHADOW_COLOR}, 0 0 0 2px {PRIMARY_COLOR};
+        border-color: {PRIMARY_COLOR};
+    }}
 
-    .product-card::before {
+    .product-card::before {{
         content: '';
         position: absolute;
         top: 0;
-        left: -100%%;
-        width: 100%%;
-        height: 100%%;
+        left: -100%;
+        width: 100%;
+        height: 100%;
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
         transition: left 0.7s;
         z-index: 10;
         pointer-events: none;
-    }
+    }}
 
-    .product-card:hover::before {
-        left: 100%%;
-    }
+    .product-card:hover::before {{
+        left: 100%;
+    }}
 
-    .product-image-wrapper {
+    .product-image-wrapper {{
         position: relative;
-        width: 100%%;
+        width: 100%;
         aspect-ratio: 1 / 1;
-        background: linear-gradient(135deg, %s 0%%, %s 100%%);
+        background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
         overflow: hidden;
-    }
+    }}
 
-    .product-image-container {
-        width: 100%%;
-        height: 100%%;
+    .product-image-container {{
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 16px;
         transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
+    }}
 
-    .product-card:hover .product-image-container {
+    .product-card:hover .product-image-container {{
         transform: scale(1.1);
-    }
+    }}
 
-    .product-image {
-        max-width: 100%%;
-        max-height: 100%%;
+    .product-image {{
+        max-width: 100%;
+        max-height: 100%;
         width: auto;
         height: auto;
         object-fit: contain;
         border-radius: 16px;
         transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
         filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1));
-    }
+    }}
 
-    .product-card:hover .product-image {
+    .product-card:hover .product-image {{
         filter: drop-shadow(0 20px 30px rgba(0,0,0,0.15));
         transform: scale(1.05);
-    }
+    }}
 
-    .stock-badge {
+    .stock-badge {{
         position: absolute;
         top: 16px;
         right: 16px;
@@ -282,33 +289,33 @@ css_part2 = """
         z-index: 10;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         animation: badgeFloat 3s ease-in-out infinite;
-    }
+    }}
 
-    @keyframes badgeFloat {
-        0%%, 100%% { transform: translateY(0); }
-        50%% { transform: translateY(-5px); }
-    }
+    @keyframes badgeFloat {{
+        0%, 100% {{ transform: translateY(0); }}
+        50% {{ transform: translateY(-5px); }}
+    }}
 
-    .badge-in-stock {
-        background: linear-gradient(135deg, %s, #059669);
+    .badge-in-stock {{
+        background: linear-gradient(135deg, {SUCCESS_COLOR}, #059669);
         color: white;
-    }
+    }}
 
-    .badge-out-stock {
-        background: linear-gradient(135deg, %s, #dc2626);
+    .badge-out-stock {{
+        background: linear-gradient(135deg, {ERROR_COLOR}, #dc2626);
         color: white;
-    }
+    }}
 
-    .product-content {
+    .product-content {{
         padding: 1.5rem;
-        background: %s;
+        background: {CARD_BACKGROUND};
         position: relative;
-    }
+    }}
 
-    .product-name {
+    .product-name {{
         font-size: 1.1rem;
         font-weight: 700;
-        color: %s;
+        color: {TEXT_PRIMARY};
         margin-bottom: 0.6rem;
         line-height: 1.3;
         display: -webkit-box;
@@ -316,15 +323,15 @@ css_part2 = """
         -webkit-box-orient: vertical;
         overflow: hidden;
         min-height: 2.8rem;
-    }
+    }}
 
-    @media (min-width: 768px) {
-        .product-name { font-size: 1.2rem; }
-    }
+    @media (min-width: 768px) {{
+        .product-name {{ font-size: 1.2rem; }}
+    }}
 
-    .product-description {
+    .product-description {{
         font-size: 0.85rem;
-        color: %s;
+        color: {TEXT_SECONDARY};
         line-height: 1.5;
         margin-bottom: 1rem;
         display: -webkit-box;
@@ -332,108 +339,300 @@ css_part2 = """
         -webkit-box-orient: vertical;
         overflow: hidden;
         min-height: 2.5rem;
-    }
+    }}
 
-    .product-price {
+    .product-price {{
         font-size: 1.4rem;
-        color: %s;
+        color: {PRICE_COLOR};
         font-weight: 800;
         margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 0.3rem;
-    }
+    }}
 
-    .price-currency {
+    .price-currency {{
         font-size: 0.9rem;
-        color: %s;
+        color: {TEXT_MUTED};
         font-weight: 600;
-    }
+    }}
 
-    .variant-hint {
+    .variant-hint {{
         font-size: 0.8rem;
-        color: %s;
+        color: {PRIMARY_COLOR};
         font-weight: 700;
         margin-bottom: 1rem;
         padding: 6px 12px;
-        background: linear-gradient(135deg, %s, #fff);
+        background: linear-gradient(135deg, {SURFACE_COLOR}, #fff);
         border-radius: 20px;
         display: inline-block;
-        border: 1px solid %s;
-    }
-"""
+        border: 1px solid {BORDER_COLOR};
+    }}
+</style>
+""".format(
+    TEXT_PRIMARY=TEXT_PRIMARY,
+    PRIMARY_COLOR=PRIMARY_COLOR,
+    PRIMARY_LIGHT=PRIMARY_LIGHT,
+    ACCENT_COLOR=ACCENT_COLOR,
+    CARD_BACKGROUND=CARD_BACKGROUND,
+    BORDER_COLOR=BORDER_COLOR,
+    SHADOW_COLOR=SHADOW_COLOR,
+    SURFACE_COLOR=SURFACE_COLOR,
+    BACKGROUND_COLOR=BACKGROUND_COLOR,
+    SUCCESS_COLOR=SUCCESS_COLOR,
+    ERROR_COLOR=ERROR_COLOR,
+    TEXT_SECONDARY=TEXT_SECONDARY,
+    PRICE_COLOR=PRICE_COLOR,
+    TEXT_MUTED=TEXT_MUTED,
+)
 
-st.markdown(css_part2 % (
-    TEXT_PRIMARY, PRIMARY_COLOR, PRIMARY_LIGHT, ACCENT_COLOR,
-    CARD_BACKGROUND, BORDER_COLOR, SHADOW_COLOR, PRIMARY_COLOR, PRIMARY_COLOR,
-    SURFACE_COLOR, BACKGROUND_COLOR, SUCCESS_COLOR, ERROR_COLOR, CARD_BACKGROUND,
-    TEXT_PRIMARY, TEXT_SECONDARY, PRICE_COLOR, TEXT_MUTED, PRIMARY_COLOR, SURFACE_COLOR, BORDER_COLOR
-), unsafe_allow_html=True)
+st.markdown(css_part2, unsafe_allow_html=True)
 
-# Final CSS parts
+# ==========================================
+# CSS PART 3 — Buttons, forms, admin
+# ==========================================
+
+css_part3 = """
+<style>
+    .stButton > button {{
+        background: linear-gradient(135deg, {PRIMARY_LIGHT} 0%, {PRIMARY_COLOR} 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 16px !important;
+        padding: 1rem 2rem !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
+        box-shadow: 0 6px 20px {SHADOW_COLOR} !important;
+        width: 100% !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        position: relative;
+        overflow: hidden;
+    }}
+
+    .stButton > button::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.6s;
+    }}
+
+    .stButton > button:hover::before {{
+        left: 100%;
+    }}
+
+    .stButton > button:hover {{
+        transform: translateY(-3px) !important;
+        box-shadow: 0 10px 30px {SHADOW_COLOR} !important;
+    }}
+
+    .stButton > button:disabled {{
+        background: #e5e7eb !important;
+        color: #9ca3af !important;
+        box-shadow: none !important;
+        cursor: not-allowed !important;
+    }}
+
+    .admin-btn-container button {{
+        padding: 0.6rem 1.2rem !important;
+        font-size: 0.85rem !important;
+        width: auto !important;
+        min-width: 120px !important;
+    }}
+
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {{
+        background-color: {CARD_BACKGROUND} !important;
+        color: {TEXT_PRIMARY} !important;
+        border: 2px solid {BORDER_COLOR} !important;
+        border-radius: 16px !important;
+        padding: 1rem 1.2rem !important;
+        font-size: 1rem !important;
+        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }}
+
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {{
+        border-color: {PRIMARY_COLOR} !important;
+        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15) !important;
+        outline: none !important;
+        transform: translateY(-2px);
+    }}
+
+    .stTextInput > label,
+    .stNumberInput > label,
+    .stTextArea > label,
+    .stSelectbox > label {{
+        color: {TEXT_PRIMARY} !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
+    }}
+
+    .admin-card {{
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.5);
+    }}
+
+    .stat-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.2rem;
+        margin-bottom: 2rem;
+    }}
+
+    @media (min-width: 768px) {{
+        .stat-grid {{ gap: 1.5rem; }}
+    }}
+
+    .stat-box {{
+        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, {PRIMARY_LIGHT} 100%);
+        color: white;
+        padding: 1.8rem 1rem;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 15px 35px {SHADOW_COLOR};
+        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+        overflow: hidden;
+    }}
+
+    .stat-box::before {{
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+        animation: statPulse 3s ease-in-out infinite;
+    }}
+
+    @keyframes statPulse {{
+        0%, 100% {{ transform: scale(1); opacity: 0.5; }}
+        50% {{ transform: scale(1.1); opacity: 0.8; }}
+    }}
+
+    .stat-box:hover {{
+        transform: translateY(-5px) scale(1.02);
+    }}
+
+    .stat-number {{
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.3rem;
+        line-height: 1;
+        position: relative;
+        z-index: 2;
+    }}
+
+    @media (min-width: 768px) {{
+        .stat-number {{ font-size: 2.5rem; }}
+    }}
+
+    .stat-label {{
+        font-size: 0.8rem;
+        opacity: 0.95;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: relative;
+        z-index: 2;
+    }}
+</style>
+""".format(
+    PRIMARY_COLOR=PRIMARY_COLOR,
+    PRIMARY_LIGHT=PRIMARY_LIGHT,
+    SHADOW_COLOR=SHADOW_COLOR,
+    CARD_BACKGROUND=CARD_BACKGROUND,
+    TEXT_PRIMARY=TEXT_PRIMARY,
+    BORDER_COLOR=BORDER_COLOR,
+)
+
+# ==========================================
+# CSS PART 4 — Order, success, footer, admin login
+# NOTE: The SVG in the footer ::before used URL-encoded characters (%3E etc.)
+#       which broke % formatting. It's been replaced with a safe inline SVG
+#       via a data URI that doesn't rely on % encoding, or simply removed.
+# ==========================================
+
 css_part4 = """
-    .order-container {
+<style>
+    .order-container {{
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
         border-radius: 32px;
         padding: 2.5rem 2rem;
         margin: 3rem 0;
         box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-        border: 2px solid %s;
-    }
+        border: 2px solid {BORDER_COLOR};
+    }}
 
-    @media (min-width: 768px) {
-        .order-container { padding: 3rem; margin: 4rem 0; }
-    }
+    @media (min-width: 768px) {{
+        .order-container {{ padding: 3rem; margin: 4rem 0; }}
+    }}
 
-    .order-summary {
-        background: linear-gradient(135deg, %s 0%%, %s 100%%);
-        border: 2px solid %s;
+    .order-summary {{
+        background: linear-gradient(135deg, {SURFACE_COLOR} 0%, {BACKGROUND_COLOR} 100%);
+        border: 2px solid {BORDER_COLOR};
         border-radius: 20px;
         padding: 2rem;
         margin: 2rem 0;
         position: relative;
         overflow: hidden;
-    }
+    }}
 
-    .order-summary::before {
+    .order-summary::before {{
         content: '✨';
         position: absolute;
         top: 10px;
         right: 20px;
         font-size: 60px;
         opacity: 0.1;
-    }
+    }}
 
-    .order-summary-title {
+    .order-summary-title {{
         font-size: 1.2rem;
         font-weight: 700;
-        color: %s;
+        color: {TEXT_PRIMARY};
         margin-bottom: 1.2rem;
         padding-bottom: 0.8rem;
-        border-bottom: 2px solid %s;
-    }
+        border-bottom: 2px solid {BORDER_COLOR};
+    }}
 
-    .order-summary-row {
+    .order-summary-row {{
         display: flex;
         justify-content: space-between;
         margin-bottom: 0.8rem;
         font-size: 1rem;
-        color: %s;
-    }
+        color: {TEXT_SECONDARY};
+    }}
 
-    .order-summary-total {
+    .order-summary-total {{
         font-size: 1.8rem;
         font-weight: 800;
-        color: %s;
+        color: {PRICE_COLOR};
         margin-top: 1.2rem;
         padding-top: 1.2rem;
-        border-top: 2px solid %s;
-    }
+        border-top: 2px solid {BORDER_COLOR};
+    }}
 
-    .success-message {
-        background: linear-gradient(135deg, #d1fae5 0%%, #a7f3d0 100%%);
-        border: 3px solid %s;
+    .success-message {{
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border: 3px solid {SUCCESS_COLOR};
         color: #065f46;
         padding: 3rem 2rem;
         border-radius: 24px;
@@ -443,14 +642,14 @@ css_part4 = """
         position: relative;
         overflow: hidden;
         animation: successPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
+    }}
 
-    @keyframes successPop {
-        0%% { transform: scale(0.8); opacity: 0; }
-        100%% { transform: scale(1); opacity: 1; }
-    }
+    @keyframes successPop {{
+        0% {{ transform: scale(0.8); opacity: 0; }}
+        100% {{ transform: scale(1); opacity: 1; }}
+    }}
 
-    .success-message::before {
+    .success-message::before {{
         content: '🎉';
         position: absolute;
         top: -20px;
@@ -458,9 +657,9 @@ css_part4 = """
         font-size: 120px;
         opacity: 0.15;
         animation: floatEmoji 3s ease-in-out infinite;
-    }
+    }}
 
-    .success-message::after {
+    .success-message::after {{
         content: '✨';
         position: absolute;
         bottom: -10px;
@@ -468,27 +667,27 @@ css_part4 = """
         font-size: 80px;
         opacity: 0.15;
         animation: floatEmoji 3s ease-in-out infinite reverse;
-    }
+    }}
 
-    @keyframes floatEmoji {
-        0%%, 100%% { transform: translateY(0) rotate(0deg); }
-        50%% { transform: translateY(-20px) rotate(10deg); }
-    }
+    @keyframes floatEmoji {{
+        0%, 100% {{ transform: translateY(0) rotate(0deg); }}
+        50% {{ transform: translateY(-20px) rotate(10deg); }}
+    }}
 
-    .success-title {
+    .success-title {{
         font-size: 1.8rem;
         font-weight: 800;
         margin-bottom: 1rem;
         position: relative;
         z-index: 1;
-    }
+    }}
 
-    .loading-overlay {
+    .loading-overlay {{
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%%;
-        height: 100%%;
+        width: 100%;
+        height: 100%;
         background: rgba(254, 243, 242, 0.98);
         display: flex;
         flex-direction: column;
@@ -496,61 +695,62 @@ css_part4 = """
         justify-content: center;
         z-index: 9999;
         backdrop-filter: blur(10px);
-    }
+    }}
 
-    .loading-spinner {
+    .loading-spinner {{
         width: 70px;
         height: 70px;
-        border: 4px solid %s;
-        border-top: 4px solid %s;
-        border-right: 4px solid %s;
-        border-radius: 50%%;
+        border: 4px solid {BORDER_COLOR};
+        border-top: 4px solid {PRIMARY_COLOR};
+        border-right: 4px solid {PRIMARY_LIGHT};
+        border-radius: 50%;
         animation: spin 1s linear infinite;
-        box-shadow: 0 0 20px %s;
-    }
+        box-shadow: 0 0 20px {SHADOW_COLOR};
+    }}
 
-    @keyframes spin {
-        0%% { transform: rotate(0deg); }
-        100%% { transform: rotate(360deg); }
-    }
+    @keyframes spin {{
+        0% {{ transform: rotate(0deg); }}
+        100% {{ transform: rotate(360deg); }}
+    }}
 
-    .loading-text {
+    .loading-text {{
         margin-top: 2rem;
         font-size: 1.2rem;
-        color: %s;
+        color: {TEXT_PRIMARY};
         font-weight: 700;
         animation: pulse 1.5s ease-in-out infinite;
-    }
+    }}
 
-    @keyframes pulse {
-        0%%, 100%% { opacity: 1; }
-        50%% { opacity: 0.5; }
-    }
+    @keyframes pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+    }}
 
-    .footer {
-        background: linear-gradient(135deg, %s 0%%, %s 100%%);
+    .footer {{
+        background: linear-gradient(135deg, {TEXT_SECONDARY} 0%, {PRIMARY_COLOR} 100%);
         color: white;
         padding: 4rem 2rem;
         border-radius: 40px 40px 0 0;
         margin-top: 5rem;
         text-align: center;
-        border-top: 4px solid %s;
+        border-top: 4px solid {BORDER_COLOR};
         position: relative;
         overflow: hidden;
-    }
+    }}
 
-    .footer::before {
+    .footer::before {{
         content: '';
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%%;
-        height: 100%%;
-        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        width: 100%;
+        height: 100%;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 30px 30px;
         opacity: 0.5;
-    }
+    }}
 
-    .footer-title {
+    .footer-title {{
         font-size: 1.5rem;
         font-weight: 700;
         margin-bottom: 2rem;
@@ -558,9 +758,9 @@ css_part4 = """
         font-family: 'Playfair Display', serif;
         position: relative;
         z-index: 1;
-    }
+    }}
 
-    .footer-links {
+    .footer-links {{
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
@@ -568,9 +768,9 @@ css_part4 = """
         margin-bottom: 2rem;
         position: relative;
         z-index: 1;
-    }
+    }}
 
-    .footer-link {
+    .footer-link {{
         color: rgba(255,255,255,0.9);
         text-decoration: none;
         font-size: 1rem;
@@ -579,14 +779,14 @@ css_part4 = """
         display: flex;
         align-items: center;
         gap: 0.5rem;
-    }
+    }}
 
-    .footer-link:hover {
-        color: %s;
+    .footer-link:hover {{
+        color: {PRIMARY_LIGHT};
         transform: translateY(-3px);
-    }
+    }}
 
-    .footer-copyright {
+    .footer-copyright {{
         font-size: 0.9rem;
         opacity: 0.7;
         margin-top: 2rem;
@@ -594,9 +794,9 @@ css_part4 = """
         border-top: 1px solid rgba(255,255,255,0.2);
         position: relative;
         z-index: 1;
-    }
+    }}
 
-    .admin-login-box {
+    .admin-login-box {{
         max-width: 450px;
         margin: 4rem auto;
         background: rgba(255, 255, 255, 0.95);
@@ -604,14 +804,14 @@ css_part4 = """
         border-radius: 32px;
         padding: 3rem;
         box-shadow: 0 25px 80px rgba(0,0,0,0.15);
-        border: 2px solid %s;
+        border: 2px solid {BORDER_COLOR};
         animation: loginEntrance 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
+    }}
 
-    @keyframes loginEntrance {
-        0%% { opacity: 0; transform: translateY(40px) scale(0.95); }
-        100%% { opacity: 1; transform: translateY(0) scale(1); }
-    }
+    @keyframes loginEntrance {{
+        0% {{ opacity: 0; transform: translateY(40px) scale(0.95); }}
+        100% {{ opacity: 1; transform: translateY(0) scale(1); }}
+    }}
 </style>
 
 <div class="gold-particles">
@@ -630,14 +830,20 @@ css_part4 = """
 <div class="pink-orb"></div>
 <div class="pink-orb"></div>
 <div class="pink-orb"></div>
-"""
+""".format(
+    BORDER_COLOR=BORDER_COLOR,
+    SURFACE_COLOR=SURFACE_COLOR,
+    BACKGROUND_COLOR=BACKGROUND_COLOR,
+    TEXT_PRIMARY=TEXT_PRIMARY,
+    TEXT_SECONDARY=TEXT_SECONDARY,
+    PRICE_COLOR=PRICE_COLOR,
+    SUCCESS_COLOR=SUCCESS_COLOR,
+    PRIMARY_COLOR=PRIMARY_COLOR,
+    PRIMARY_LIGHT=PRIMARY_LIGHT,
+    SHADOW_COLOR=SHADOW_COLOR,
+)
 
-st.markdown(css_part4 % (
-    BORDER_COLOR, SURFACE_COLOR, BACKGROUND_COLOR, BORDER_COLOR, TEXT_PRIMARY, BORDER_COLOR,
-    TEXT_SECONDARY, PRICE_COLOR, BORDER_COLOR, SUCCESS_COLOR, BORDER_COLOR, PRIMARY_COLOR,
-    PRIMARY_LIGHT, SHADOW_COLOR, PRIMARY_COLOR, TEXT_PRIMARY, TEXT_SECONDARY, PRIMARY_COLOR,
-    PRIMARY_LIGHT, BORDER_COLOR
-), unsafe_allow_html=True)
+st.markdown(css_part4, unsafe_allow_html=True)
 
 # ==========================================
 # GOOGLE SHEETS CONNECTION
@@ -875,175 +1081,13 @@ if st.session_state.admin_logged:
         st.info("No products found")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+    # Inject button/form CSS after admin check (before stop)
+    st.markdown(css_part3, unsafe_allow_html=True)
     st.stop()
 
-# Buttons and Forms CSS
-css_part3 = """
-    .stButton > button {
-        background: linear-gradient(135deg, %s 0%%, %s 100%%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 16px !important;
-        padding: 1rem 2rem !important;
-        font-weight: 700 !important;
-        font-size: 1rem !important;
-        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
-        box-shadow: 0 6px 20px %s !important;
-        width: 100%% !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stButton > button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%%;
-        width: 100%%;
-        height: 100%%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-        transition: left 0.6s;
-    }
-
-    .stButton > button:hover::before {
-        left: 100%%;
-    }
-
-    .stButton > button:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 10px 30px %s !important;
-    }
-
-    .stButton > button:disabled {
-        background: #e5e7eb !important;
-        color: #9ca3af !important;
-        box-shadow: none !important;
-        cursor: not-allowed !important;
-    }
-
-    .admin-btn-container button {
-        padding: 0.6rem 1.2rem !important;
-        font-size: 0.85rem !important;
-        width: auto !important;
-        min-width: 120px !important;
-    }
-
-    .stTextInput > div > div > input,
-    .stNumberInput > div > div > input,
-    .stTextArea > div > div > textarea,
-    .stSelectbox > div > div > div {
-        background-color: %s !important;
-        color: %s !important;
-        border: 2px solid %s !important;
-        border-radius: 16px !important;
-        padding: 1rem 1.2rem !important;
-        font-size: 1rem !important;
-        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
-    }
-
-    .stTextInput > div > div > input:focus,
-    .stNumberInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus {
-        border-color: %s !important;
-        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15) !important;
-        outline: none !important;
-        transform: translateY(-2px);
-    }
-
-    .stTextInput > label,
-    .stNumberInput > label,
-    .stTextArea > label,
-    .stSelectbox > label {
-        color: %s !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        margin-bottom: 0.5rem !important;
-    }
-
-    .admin-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255,255,255,0.5);
-    }
-
-    .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.2rem;
-        margin-bottom: 2rem;
-    }
-
-    @media (min-width: 768px) {
-        .stat-grid { gap: 1.5rem; }
-    }
-
-    .stat-box {
-        background: linear-gradient(135deg, %s 0%%, %s 100%%);
-        color: white;
-        padding: 1.8rem 1rem;
-        border-radius: 20px;
-        text-align: center;
-        box-shadow: 0 15px 35px %s;
-        transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stat-box::before {
-        content: '';
-        position: absolute;
-        top: -50%%;
-        left: -50%%;
-        width: 200%%;
-        height: 200%%;
-        background: radial-gradient(circle, rgba(255,255,255,0.3) 0%%, transparent 70%%);
-        animation: statPulse 3s ease-in-out infinite;
-    }
-
-    @keyframes statPulse {
-        0%%, 100%% { transform: scale(1); opacity: 0.5; }
-        50%% { transform: scale(1.1); opacity: 0.8; }
-    }
-
-    .stat-box:hover {
-        transform: translateY(-5px) scale(1.02);
-    }
-
-    .stat-number {
-        font-size: 2rem;
-        font-weight: 800;
-        margin-bottom: 0.3rem;
-        line-height: 1;
-        position: relative;
-        z-index: 2;
-    }
-
-    @media (min-width: 768px) {
-        .stat-number { font-size: 2.5rem; }
-    }
-
-    .stat-label {
-        font-size: 0.8rem;
-        opacity: 0.95;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        position: relative;
-        z-index: 2;
-    }
-"""
-
-st.markdown(css_part3 % (
-    PRIMARY_LIGHT, PRIMARY_COLOR, SHADOW_COLOR, SHADOW_COLOR,
-    CARD_BACKGROUND, TEXT_PRIMARY, BORDER_COLOR, PRIMARY_COLOR, TEXT_PRIMARY,
-    PRIMARY_COLOR, PRIMARY_LIGHT, SHADOW_COLOR
-), unsafe_allow_html=True)
+# Inject button/form CSS for public view
+st.markdown(css_part3, unsafe_allow_html=True)
 
 # ==========================================
 # CHECKOUT FORM
@@ -1135,7 +1179,7 @@ if st.session_state.selected_product is not None:
 
                     # Send notifications async
                     send_notifications_async(
-                        p["name"], selected_variant, name, phone, location, 
+                        p["name"], selected_variant, name, phone, location,
                         qty, total, ref, timestamp
                     )
 
