@@ -69,10 +69,13 @@ def upload_to_cloudinary(file, filename):
                 {'fetch_format': 'auto'}
             ]
         )
-        return result.get('secure_url')
+        url = result.get('secure_url')
+        if not url:
+            raise ValueError("Cloudinary returned no URL. Check your CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET env vars.")
+        return url
     except Exception as e:
-        print(f"Upload error: {e}")
-        return None
+        # Raise so the caller can show it in the UI
+        raise RuntimeError(f"Image upload failed: {e}") from e
 
 def delete_from_cloudinary(image_url):
     try:
@@ -824,12 +827,19 @@ if st.session_state.admin_logged:
 
         if st.form_submit_button("🚀 Add Product", use_container_width=True):
             if name and images:
-                with st.spinner("Uploading images..."):
-                    image_urls = []
+                image_urls = []
+                upload_ok = True
+                with st.spinner("Uploading images to Cloudinary..."):
                     for i, img in enumerate(images[:MAX_PRODUCT_IMAGES], 1):
-                        url = upload_to_cloudinary(img, f"{name.replace(' ','_')}_{i}_{int(time.time())}.jpg")
-                        if url:
+                        try:
+                            url = upload_to_cloudinary(img, f"{name.replace(' ','_')}_{i}_{int(time.time())}.jpg")
                             image_urls.append(url)
+                            st.success(f"✅ Image {i} uploaded OK")
+                        except RuntimeError as e:
+                            st.error(str(e))
+                            upload_ok = False
+                            break
+                if upload_ok and image_urls:
                     while len(image_urls) < MAX_PRODUCT_IMAGES:
                         image_urls.append("")
                     try:
@@ -839,13 +849,15 @@ if st.session_state.admin_logged:
                         status  = STATUS_IN_STOCK if stock > 0 else STATUS_OUT_OF_STOCK
                         sheet.append_row([new_id, name, price, stock] + image_urls + [description, status, variants])
                         st.cache_data.clear()
-                        st.success("✅ Product added!")
+                        st.success("✅ Product saved to sheet!")
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {str(e)}")
+                        st.error(f"Sheet error: {str(e)}")
+                elif not upload_ok:
+                    st.warning("⚠️ Upload failed — check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET env vars.")
             else:
-                st.warning("⚠️ Please provide name and images")
+                st.warning("⚠️ Please provide a product name and at least one image")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Manage Products
@@ -858,10 +870,13 @@ if st.session_state.admin_logged:
                 if i + j < len(products_df):
                     row = products_df.iloc[i + j]
                     with col:
-                        if row.get("image1") and str(row["image1"]).strip():
-                            st.image(row["image1"], use_container_width=True)
+                        img1 = str(row.get("image1", "")).strip()
+                        if img1 and img1.startswith("http"):
+                            st.image(img1, use_container_width=True)
+                        elif img1:
+                            st.warning(f"Bad URL: {img1[:60]}")
                         else:
-                            st.info("No image")
+                            st.info("No image — upload may have failed")
                         st.markdown(f"**{row['name']}**")
                         st.markdown(f"<span style='color:{PRICE_COLOR};font-weight:700;'>{CURRENCY_SYMBOL}{row['price']}</span>", unsafe_allow_html=True)
                         st.caption(f"Stock: {row.get('stock', 0)}")
@@ -904,8 +919,8 @@ else:
     st.markdown("<div class='product-grid'>", unsafe_allow_html=True)
 
     for idx, row in products_df.iterrows():
-        images = [str(row[f"image{n}"]) for n in range(1,4)
-                  if f"image{n}" in row and row[f"image{n}"] and str(row[f"image{n}"]).strip()]
+        images = [str(row[f"image{n}"]).strip() for n in range(1,4)
+                  if f"image{n}" in row and str(row.get(f"image{n}","")).strip().startswith("http")]
 
         product_id   = int(row['id'])
         carousel_key = f"carousel_{product_id}"
