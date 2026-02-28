@@ -164,8 +164,8 @@ IMAGE_CACHE_TTL = 3600        # 1 hour
 FOOTER_LINKS = [
     {"icon": "📞", "text": "0545651573", "url": "tel:0545651573"},
     {"icon": "📱", "text": "0507262613", "url": "tel:0507262613"},
-    {"icon": "👻", "text": SNAPCHAT_HANDLE, "url": "#"},
-    {"icon": "🎵", "text": TIKTOK_HANDLE, "url": "#"},
+    {"icon": "👻", "text": SNAPCHAT_HANDLE, "url": "https://snapchat.com/t/bc8MdxXn"},
+    {"icon": "🎵", "text": TIKTOK_HANDLE, "url": "https://www.tiktok.com/@kccrochetandawyshop?_r=1&_t=ZS-94IGr7exrHE"},
     {"icon": "📍", "text": LOCATION, "url": "#"},
 ]
 
