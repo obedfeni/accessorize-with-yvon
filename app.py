@@ -62,19 +62,13 @@ def upload_to_cloudinary(file, filename):
             file,
             public_id=public_id,
             overwrite=True,
-            resource_type="image",
-            transformation=[
-                {'width': 800, 'height': 800, 'crop': 'limit'},
-                {'quality': PRODUCT_IMAGE_QUALITY},
-                {'fetch_format': 'auto'}
-            ]
+            resource_type="image"
         )
         url = result.get('secure_url')
         if not url:
-            raise ValueError("Cloudinary returned no URL. Check your CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET env vars.")
+            raise ValueError("Cloudinary returned no URL. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET env vars.")
         return url
     except Exception as e:
-        # Raise so the caller can show it in the UI
         raise RuntimeError(f"Image upload failed: {e}") from e
 
 def delete_from_cloudinary(image_url):
@@ -870,13 +864,10 @@ if st.session_state.admin_logged:
                 if i + j < len(products_df):
                     row = products_df.iloc[i + j]
                     with col:
-                        img1 = str(row.get("image1", "")).strip()
-                        if img1 and img1.startswith("http"):
-                            st.image(img1, use_container_width=True)
-                        elif img1:
-                            st.warning(f"Bad URL: {img1[:60]}")
+                        if row.get("image1") and str(row["image1"]).strip():
+                            st.image(str(row["image1"]).strip(), use_container_width=True)
                         else:
-                            st.info("No image — upload may have failed")
+                            st.info("No image")
                         st.markdown(f"**{row['name']}**")
                         st.markdown(f"<span style='color:{PRICE_COLOR};font-weight:700;'>{CURRENCY_SYMBOL}{row['price']}</span>", unsafe_allow_html=True)
                         st.caption(f"Stock: {row.get('stock', 0)}")
@@ -919,8 +910,11 @@ else:
     st.markdown("<div class='product-grid'>", unsafe_allow_html=True)
 
     for idx, row in products_df.iterrows():
-        images = [str(row[f"image{n}"]).strip() for n in range(1,4)
-                  if f"image{n}" in row and str(row.get(f"image{n}","")).strip().startswith("http")]
+        images = []
+        for _n in range(1, 4):
+            _k = f"image{_n}"
+            if _k in row and row[_k] and str(row[_k]).strip():
+                images.append(str(row[_k]).strip())
 
         product_id   = int(row['id'])
         carousel_key = f"carousel_{product_id}"
