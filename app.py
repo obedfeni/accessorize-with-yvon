@@ -148,7 +148,7 @@ if "page" in st.query_params and st.query_params["page"] == "admin":
 
 # ==========================================
 # ALL CSS — single block, injected once
-# .format() with named keys; CSS { } are doubled {{ }}
+# .format() with named keys; CSS {{ }} are doubled {{ }}
 # ==========================================
 
 _logo_radius = "50%" if LOGO_SHAPE == "circle" else "16px"
@@ -307,28 +307,29 @@ body, .stApp {{
 }}
 @media (min-width: 768px) {{ .main-content {{ padding: 2rem 2rem; }} }}
 
-/* SECTION TITLE */
+/* SECTION TITLE - REDUCED SPACING */
 .section-title {{
     font-size: 1.8rem; font-weight: 800; color: {TEXT_PRIMARY};
-    margin: 2rem 0 1.5rem 0; text-align: center;
+    margin: 1rem 0 0.75rem 0; text-align: center;
     position: relative; font-family: 'Playfair Display', serif;
 }}
 .section-title::after {{
     content: ''; display: block; width: 100px; height: 4px;
     background: linear-gradient(90deg, {PRIMARY_COLOR}, {PRIMARY_LIGHT}, {ACCENT_COLOR});
-    margin: 1rem auto 0; border-radius: 2px;
+    margin: 0.75rem auto 0; border-radius: 2px;
 }}
 @media (min-width: 768px) {{
-    .section-title {{ font-size: 2.5rem; margin: 3rem 0 2rem 0; }}
+    .section-title {{ font-size: 2.5rem; margin: 1.5rem 0 1rem 0; }}
 }}
 
-/* PRODUCT GRID */
+/* PRODUCT GRID - REDUCED GAP */
 .product-grid {{
     display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 1.2rem; perspective: 1000px;
+    gap: 0.75rem; perspective: 1000px;
+    margin-top: 0;
 }}
 @media (min-width: 768px) {{
-    .product-grid {{ grid-template-columns: repeat(3, 1fr); gap: 2rem; }}
+    .product-grid {{ grid-template-columns: repeat(3, 1fr); gap: 1rem; }}
 }}
 
 /* PRODUCT CARD */
@@ -407,6 +408,53 @@ body, .stApp {{
     margin-bottom: 1rem; padding: 6px 12px;
     background: linear-gradient(135deg, {SURFACE_COLOR}, #fff);
     border-radius: 20px; display: inline-block; border: 1px solid {BORDER_COLOR};
+}}
+
+/* COMPACT CAROUSEL CONTROLS */
+.carousel-controls {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 0;
+}}
+.carousel-btn {{
+    min-height: 28px !important;
+    height: 28px !important;
+    width: 28px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255,255,255,0.9) !important;
+    border: 1px solid {BORDER_COLOR} !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    color: {TEXT_PRIMARY} !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}}
+.carousel-btn:hover {{
+    background: {PRIMARY_COLOR} !important;
+    color: white !important;
+    border-color: {PRIMARY_COLOR} !important;
+    transform: scale(1.1);
+}}
+.carousel-btn:active {{
+    transform: scale(0.95);
+}}
+.carousel-counter {{
+    font-size: 0.75rem;
+    color: {TEXT_SECONDARY};
+    font-weight: 600;
+    min-width: 40px;
+    text-align: center;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+    border: 1px solid {BORDER_COLOR};
 }}
 
 /* BUTTONS */
@@ -940,18 +988,24 @@ else:
 
         st.markdown("</div>", unsafe_allow_html=True)  # close image-wrapper
 
+        # COMPACT CAROUSEL CONTROLS - Smaller arrows
         if len(images) > 1:
-            cl, cm, cr = st.columns([1, 2, 1])
+            st.markdown("<div class='carousel-controls'>", unsafe_allow_html=True)
+            
+            # Use columns with tighter spacing
+            cl, cm, cr = st.columns([0.8, 2, 0.8])
             with cl:
-                if st.button("◀", key=f"prev_{product_id}_{idx}", use_container_width=True):
+                if st.button("‹", key=f"prev_{product_id}_{idx}"):
                     st.session_state.carousel_indices[carousel_key] = (st.session_state.carousel_indices[carousel_key] - 1) % len(images)
                     st.rerun()
             with cm:
-                st.markdown(f"<div style='text-align:center;padding:8px 0;font-size:0.8rem;color:#6b7280;font-weight:600;'>{st.session_state.carousel_indices[carousel_key]+1} / {len(images)}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='carousel-counter'>{st.session_state.carousel_indices[carousel_key]+1} / {len(images)}</div>", unsafe_allow_html=True)
             with cr:
-                if st.button("▶", key=f"next_{product_id}_{idx}", use_container_width=True):
+                if st.button("›", key=f"next_{product_id}_{idx}"):
                     st.session_state.carousel_indices[carousel_key] = (st.session_state.carousel_indices[carousel_key] + 1) % len(images)
                     st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown(f"<div class='product-content'><div class='product-name'>{row['name']}</div>", unsafe_allow_html=True)
         if row.get('description'):
@@ -1080,3 +1134,4 @@ st.markdown(f"""
 # CLOSE MAIN CONTENT WRAPPER
 # ==========================================
 st.markdown("</div>", unsafe_allow_html=True)
+'''
