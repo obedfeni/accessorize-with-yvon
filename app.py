@@ -1,7 +1,7 @@
-==========================================
-ACCESSORIZE WITH YVON - FULL STACK CINEMATIC E-COMMERCE
-Python + Streamlit + Cloudinary + Google Sheets + Professional UI
-==========================================
+#==========================================
+#ACCESSORIZE WITH YVON - FULL STACK CINEMATIC E-COMMERCE
+#Python + Streamlit + Cloudinary + Google Sheets + Professional UI
+#==========================================
 
 import streamlit as st
 import gspread
