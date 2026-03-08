@@ -21,99 +21,8 @@ from urllib.parse import quote
 import cloudinary
 import cloudinary.uploader
 
-# ==========================================
-# CONFIGURATION
-# ==========================================
-
-STORE_NAME = "Accessorize with Yvon"
-STORE_TAGLINE = "Elegant Jewelry for Every Occasion"
-LOGO_TEXT = "AY"
-LOGO_SHAPE = "circle"  # or "rounded"
-
-# Brand Colors - Warm Gold & Pink Feminine Palette
-PRIMARY_COLOR = "#D97706"      # Amber/Gold
-PRIMARY_LIGHT = "#F59E0B"      # Light Amber
-PRIMARY_DARK = "#B45309"       # Dark Amber
-ACCENT_COLOR = "#EC4899"       # Pink
-BACKGROUND_COLOR = "#FDF2F8"   # Pink-50
-CARD_BACKGROUND = "#FFFFFF"
-SURFACE_COLOR = "#FCE7F3"      # Pink-100
-BORDER_COLOR = "#FBCFE8"       # Pink-200
-SHADOW_COLOR = "rgba(217, 119, 6, 0.15)"
-SUCCESS_COLOR = "#10B981"
-ERROR_COLOR = "#EF4444"
-TEXT_PRIMARY = "#1F2937"
-TEXT_SECONDARY = "#6B7280"
-TEXT_MUTED = "#9CA3AF"
-PRICE_COLOR = "#D97706"
-
-# Functional Config
-CURRENCY_SYMBOL = "₵"
-REFERENCE_PREFIX = "AYV"
-REFERENCE_LENGTH = 4
-MIN_ORDER_QUANTITY = 1
-MAX_ORDER_QUANTITY = 10
-MAX_PRODUCT_IMAGES = 3
-CACHE_TTL_PRODUCTS = 300
-CACHE_TTL_ORDERS = 60
-
-# Sheet Config
-SHEET_NAME = "AccessorizeYvon"
-PRODUCTS_WORKSHEET = "Products"
-ORDERS_WORKSHEET = "Orders"
-PRODUCT_COLUMNS = ["id", "name", "price", "stock", "image1", "image2", "image3", "description", "status", "variants"]
-ORDER_COLUMNS = ["customer_name", "phone", "location", "product_name", "quantity", "amount", "reference", "timestamp", "status", "variant"]
-
-# Status Values
-STATUS_IN_STOCK = "In Stock"
-STATUS_OUT_OF_STOCK = "Out of Stock"
-STATUS_PENDING = "Pending"
-STATUS_COMPLETED = "Completed"
-
-# Feature Flags
-SHOW_ADMIN_BUTTON = True
-SHOW_STOCK_BADGE = True
-ENABLE_SEARCH = True
-ENABLE_VARIANTS = True
-
-# Text Content
-TEXT_ADMIN_LOGIN = "Admin Access"
-TEXT_ADMIN_DASHBOARD = "Dashboard"
-TEXT_FEATURED_PRODUCTS = "Featured Collection"
-TEXT_ADD_TO_CART = "Add to Cart"
-TEXT_OUT_OF_STOCK = "Out of Stock"
-TEXT_CHECKOUT = "Complete Your Order"
-TEXT_LABEL_NAME = "Full Name"
-TEXT_LABEL_PHONE = "Phone Number"
-TEXT_LABEL_LOCATION = "Delivery Location"
-TEXT_LABEL_QUANTITY = "Quantity"
-TEXT_LABEL_VARIANT = "Select Size"
-TEXT_PLACE_ORDER = "Place Order"
-ORDER_SUCCESS_TITLE = "Order Confirmed!"
-ORDER_SUCCESS_MESSAGE = "Thank you for your purchase. We'll contact you shortly to arrange delivery."
-
-TELEGRAM_TEMPLATE = """
-<b>🛍️ New Order - Accessorize with Yvon</b>
-
-<b>Product:</b> {product_name}
-<b>Variant:</b> {variant}
-<b>Customer:</b> {customer_name}
-<b>Phone:</b> {phone}
-<b>Location:</b> {location}
-<b>Quantity:</b> {quantity}
-<b>Total:</b> {currency}{total}
-<b>Reference:</b> {reference}
-<b>Time:</b> {timestamp}
-"""
-
-FOOTER_LINKS = [
-    {"icon": "📱", "text": "WhatsApp", "url": "https://wa.me/233000000000"},
-    {"icon": "📸", "text": "Instagram", "url": "https://instagram.com/accessorizewithyvon"},
-    {"icon": "📘", "text": "Facebook", "url": "https://facebook.com/accessorizewithyvon"},
-    {"icon": "✉️", "text": "Email", "url": "mailto:yvon@accessorize.com"}
-]
-
-COPYRIGHT_TEXT = f"© {datetime.now().year} {STORE_NAME}. All rights reserved. Crafted with 💎 in Ghana."
+# Import configuration from separate config.py file
+from config import *
 
 # ==========================================
 # INITIALIZATION
@@ -266,7 +175,7 @@ if "page" in st.query_params and st.query_params["page"] == "admin":
 
 _logo_radius = "50%" if LOGO_SHAPE == "circle" else "16px"
 
-# Build CSS with proper escaping
+# Build CSS with proper escaping using f-string
 ALL_CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
@@ -1465,7 +1374,9 @@ def load_products():
     try:
         client = get_sheets_client()
         sheet = client.open(SHEET_NAME).worksheet(PRODUCTS_WORKSHEET)
-        records = sheet.get_all_records(expected_headers=PRODUCT_COLUMNS)
+        # Use get_all_records without expected_headers to avoid issues
+        records = sheet.get_all_records()
+        # Add row index for deletion reference
         for i, r in enumerate(records, start=2):
             r["_row"] = i
         return pd.DataFrame(records)
@@ -1479,7 +1390,7 @@ def load_orders():
     try:
         client = get_sheets_client()
         sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
-        records = sheet.get_all_records(expected_headers=ORDER_COLUMNS)
+        records = sheet.get_all_records()
         for i, r in enumerate(records, start=2):
             r["_row"] = i
         return pd.DataFrame(records)
