@@ -1325,16 +1325,24 @@ if st.session_state.show_admin_login and not st.session_state.admin_logged:
         password = st.text_input("Password", type="password")
         cols = st.columns([1, 1])
         with cols[0]:
-            if st.form_submit_button("Login", use_container_width=True):
-                if password == os.environ.get("ADMIN_PASSWORD", "admin123"):
-                    st.session_state.admin_logged = True
-                    st.session_state.show_admin_login = False
-                    st.cache_data.clear()
-                    st.success("✅ Access granted!")
-                    time.sleep(0.5)
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid password")
+            # Old (insecure)
+# if password_input == ADMIN_PASSWORD:
+#     st.session_state.admin_logged = True
+
+# New (secure)
+admin_username = st.secrets["admin"]["username"]
+admin_password = st.secrets["admin"]["password"]
+
+def admin_login():
+    st.subheader("Admin Login")
+    username_input = st.text_input("Username")
+    password_input = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username_input == admin_username and password_input == admin_password:
+            st.session_state.admin_logged = True
+            st.success("✅ Admin logged in successfully!")
+        else:
+            st.error("❌ Invalid credentials")
         with cols[1]:
             if st.form_submit_button("Cancel", use_container_width=True):
                 st.session_state.show_admin_login = False
@@ -1379,18 +1387,27 @@ def load_products():
         st.error(f"Failed to load products: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=CACHE_TTL_ORDERS, show_spinner=False)
-def load_orders():
-    """Load orders from Google Sheets"""
-    try:
-        client = get_sheets_client()
-        sheet = client.open(SHEET_NAME).worksheet(ORDERS_WORKSHEET)
-        records = sheet.get_all_records()
-        for i, r in enumerate(records, start=2):
-            r["_row"] = i
-        return pd.DataFrame(records)
-    except:
-        return pd.DataFrame()
+if st.session_state.get("admin_logged"):
+
+    st.title("🔧 Admin Dashboard")
+    st.subheader("Order Management")
+
+    @st.cache_data(ttl=300)
+    def load_orders():
+        try:
+            sheet = sheets_client.open(SHEET_NAME).worksheet(ORDERS_SHEET)
+            data = sheet.get_all_records()
+            return pd.DataFrame(data)
+        except Exception as e:
+            st.error(f"Failed to load orders: {e}")
+            return pd.DataFrame()
+
+    orders_df = load_orders()
+
+    if not orders_df.empty:
+        st.dataframe(orders_df, use_container_width=True)
+    else:
+        st.info("No orders found yet.")
 
 # ==========================================
 # ADMIN DASHBOARD
