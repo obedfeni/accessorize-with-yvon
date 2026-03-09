@@ -1,7 +1,7 @@
-==========================================
-ACCESSORIZE WITH YVON - FULL STACK CINEMATIC E-COMMERCE
-Python + Streamlit + Cloudinary + Google Sheets + Professional UI
-==========================================
+#==========================================
+#ACCESSORIZE WITH YVON - FULL STACK CINEMATIC E-COMMERCE
+#Python + Streamlit + Cloudinary + Google Sheets + Professional UI
+#==========================================
 
 import streamlit as st
 import gspread
@@ -1884,7 +1884,7 @@ if st.session_state.selected_product is not None:
                     st.session_state.selected_product = None
                     
                     # Auto-return after delay
-                    time.sleep(10)
+                    time.sleep(15)
                     st.rerun()
                     
                 except Exception as e:
