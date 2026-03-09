@@ -37,12 +37,11 @@ st.set_page_config(
 
 # Cloudinary Config
 cloudinary.config(
-    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.environ.get("CLOUDINARY_API_KEY"),
-    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    cloud_name = st.secrets["cloudinary"]["cloud_name"],
+    api_key = st.secrets["cloudinary"]["api_key"],
+    api_secret = st.secrets["cloudinary"]["api_secret"],
     secure=True
 )
-
 # ==========================================
 # UTILITY FUNCTIONS
 # ==========================================
@@ -1357,11 +1356,7 @@ def get_sheets_client():
         "https://www.googleapis.com/auth/drive"
     ]
     try:
-        creds_json = os.environ.get("GCP_SERVICE_ACCOUNT")
-        if not creds_json:
-            st.error("GCP_SERVICE_ACCOUNT environment variable not set")
-            st.stop()
-        creds_dict = json.loads(creds_json)
+        creds_dict = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         return gspread.authorize(creds)
     except Exception as e:
